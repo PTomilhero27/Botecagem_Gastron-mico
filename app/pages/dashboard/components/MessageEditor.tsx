@@ -7,9 +7,13 @@ type Token = { label: string; value: string };
 export function MessageEditor({
   message,
   setMessage,
+  onBlurSave,
+  saving,
 }: {
   message: string;
   setMessage: (v: string) => void;
+  onBlurSave?: (v: string) => void | Promise<void>;
+  saving?: boolean;
 }) {
   const TOKENS: Token[] = [
     { label: "Nome fantasia", value: "{nome_fantasia}" },
@@ -39,10 +43,10 @@ export function MessageEditor({
     const list = !q
       ? TOKENS
       : TOKENS.filter(
-          (t) =>
-            t.label.toLowerCase().includes(q) ||
-            t.value.toLowerCase().includes(q)
-        );
+        (t) =>
+          t.label.toLowerCase().includes(q) ||
+          t.value.toLowerCase().includes(q)
+      );
 
     return list;
   }, [query]);
@@ -101,12 +105,17 @@ export function MessageEditor({
             Digite <span className="font-semibold">/</span> para inserir referência (ex: {"{nome_fantasia}"}).
           </div>
         </div>
+
+        {saving ? (
+          <span className="text-xs text-zinc-500">Salvando…</span>
+        ) : null}
       </div>
 
       <textarea
         ref={taRef}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
+        onBlur={() => onBlurSave?.(message)}
         className="mt-3 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-zinc-200"
         rows={3}
         onKeyDown={(e) => {
