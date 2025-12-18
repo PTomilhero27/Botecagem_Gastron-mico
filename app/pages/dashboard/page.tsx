@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Vendor } from "@/lib/types";
 
@@ -15,6 +15,8 @@ import { fetchVendorsFromSheets } from "@/app/services/http";
 import { mapSheetToVendor } from "@/app/services/mapper/mapVendedor";
 import { SearchOverlay } from "./components/SearchOverlay";
 import { useAuthGuard } from "@/app/lib/auth/useAuthGuard";
+import { getWhatsappTemplate, saveWhatsappTemplate } from "@/app/services/settings";
+import { toast } from "./components/ui/toast/use-toast";
 
 export default function Dashboard() {
 
@@ -76,10 +78,38 @@ export default function Dashboard() {
   }, [searchOpen, filters.q]);
 
 
-  const [message, setMessage] = useState(
-    `Olá! Aqui é da organização do Festival Botecagem 🍻🍔
-Estamos entrando em contato sobre a participação no evento.`
-  );
+  const [message, setMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const lastSavedRef = useRef<string>("");
+
+  useEffect(() => { getWhatsappTemplate() .then((row) => setMessage(row.value)) .catch(console.error); }, []);
+
+  const setLastSaved = (v: string) => {
+    lastSavedRef.current = v;
+  };
+
+  async function saveIfDirty(next: string) {
+    if (isSaving) return;
+
+    const normalized = next.replace(/\r\n/g, "\n");
+
+    if (normalized === lastSavedRef.current) return;
+
+    try {
+      setIsSaving(true);
+      await saveWhatsappTemplate(normalized);
+      setLastSaved(normalized);
+
+    } catch (e) {
+      toast({
+        variant: "error",
+        title: "Erro ao salvar mensagem.",
+      });
+
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   const [selected, setSelected] = useState<Vendor | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -139,7 +169,12 @@ Estamos entrando em contato sobre a participação no evento.`
         }
       />
 
-      <MessageEditor message={message} setMessage={setMessage} />
+      <MessageEditor
+        message={message}
+        setMessage={setMessage}
+        onBlurSave={saveIfDirty}
+        saving={isSaving}
+      />
 
       <Stats
         total={total}
