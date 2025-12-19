@@ -31,14 +31,20 @@ export async function fetchFromSheetsCsv<T>(
   url: string,
   schema: ZodSchema<T>
 ): Promise<T> {
-  const csv = await ky.get(url, { cache: "no-store" }).text();
-  console.log("teste")
+  const res = await fetch(url, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Erro ao buscar CSV");
+  }
+
+  const csv = await res.text();
 
   const parsed = Papa.parse(csv, {
     header: true,
     skipEmptyLines: true,
   });
 
-  // parsed.data vem como any[]
   return schema.parse(parsed.data);
 }
