@@ -1,3 +1,6 @@
+"use client"
+export const dynamic = "force-dynamic";
+
 import { VendorSelected } from "@/lib/types";
 
 function formatCpfCnpj(doc?: string) {

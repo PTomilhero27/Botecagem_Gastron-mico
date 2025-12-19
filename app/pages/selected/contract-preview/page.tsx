@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import html2pdf from "html2pdf.js";
 import { Download } from "lucide-react";
 import { ContractHtml } from "./ContractHtml";
 import { useContractPreview } from "@/app/lib/contractPreview/ContractPreviewContext";
@@ -29,14 +28,15 @@ export default function ContractPreviewPage() {
   async function downloadPdf() {
     if (!vendor || !containerRef.current) return;
 
-    // ✅ doc = vendor_id (cpf ou cnpj)
+    // ✅ IMPORT DINÂMICO (evita "self is not defined" no build/SSR)
+    const html2pdf = (await import("html2pdf.js")).default;
+
+    // ✅ doc = cpf/cnpj
     const safeDoc = (vendor.vendor_id ?? "").replace(/\D/g, "") || "sem_doc";
 
-    // ✅ nome para arquivo: marca (pf/pj) -> senão nome -> fallback
+    // ✅ nome para arquivo: marca -> senão nome -> fallback
     const brand =
-      vendor.person_type === "pf"
-        ? vendor.pf_brand_name
-        : vendor.pj_brand_name;
+      vendor.person_type === "pf" ? vendor.pf_brand_name : vendor.pj_brand_name;
 
     const personName =
       vendor.person_type === "pf"
@@ -50,7 +50,11 @@ export default function ContractPreviewPage() {
         margin: [12, 12, 12, 12],
         filename: `Contrato_Botecagem_${safeName}_${safeDoc}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, backgroundColor: "#ffffff", useCORS: true },
+        html2canvas: {
+          scale: 2,
+          backgroundColor: "#ffffff",
+          useCORS: true,
+        },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         pagebreak: { mode: ["css", "legacy"] },
       })
