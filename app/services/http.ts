@@ -1,7 +1,7 @@
 import ky from "ky";
 import Papa from "papaparse";
-import { VendorPublicListSchema } from "./schema";
 import { supabase } from "../lib/supabase/client";
+import { ZodSchema } from "zod";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -11,18 +11,13 @@ export const supabaseRest = ky.create({
   timeout: 180000,
   hooks: {
     beforeRequest: [
-      async (request) => {
-        // apikey sempre vai
+      async (request, options) => {
         request.headers.set("apikey", ANON_KEY);
 
-        // se tiver usuário logado, pega o JWT dele
         const { data } = await supabase.auth.getSession();
         const accessToken = data.session?.access_token;
 
-        // Authorization: user token (se tiver), senão anon
         request.headers.set("Authorization", `Bearer ${accessToken ?? ANON_KEY}`);
-
-        // opcional, mas geralmente útil no REST do supabase:
         request.headers.set("Content-Type", "application/json");
         request.headers.set("Accept", "application/json");
       },
@@ -30,17 +25,20 @@ export const supabaseRest = ky.create({
   },
 });
 
-export async function fetchVendorsFromSheets() {
-  const url = process.env.NEXT_PUBLIC_SHEETS_CSV_URL!;
 
 
+export async function fetchFromSheetsCsv<T>(
+  url: string,
+  schema: ZodSchema<T>
+): Promise<T> {
   const csv = await ky.get(url, { cache: "no-store" }).text();
-
+  console.log("teste")
 
   const parsed = Papa.parse(csv, {
     header: true,
     skipEmptyLines: true,
   });
 
-  return VendorPublicListSchema.parse(parsed.data);
+  // parsed.data vem como any[]
+  return schema.parse(parsed.data);
 }

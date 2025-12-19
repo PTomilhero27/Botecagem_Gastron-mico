@@ -22,7 +22,7 @@ export function AuthForm() {
 
     try {
       await signIn(email.trim(), password);
-      router.push("/pages/dashboard");
+      router.push("/");
       router.refresh();
     } catch (err: any) {
       setError(err?.message ?? "Não foi possível entrar.");

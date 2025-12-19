@@ -1,48 +1,14 @@
-// /* eslint-disable @typescript-eslint/no-unused-expressions */
-// import { botecagem } from "./http";
-// import { CreateProps, EditProps, GetAllProps } from "./types";
+import { fetchFromSheetsCsv } from "./http";
+import { VendorPublicListSchema, VendorSelectedListSchema } from "./schema";
+// import { VendorFormsSchema } from "./schemaForms"; // se quiser o bruto
 
-// export const apiService = {
-//   async getAll<T>({ url, params }: GetAllProps): Promise<T> {
-//     const response = await botecagem.get(url, {
-//       searchParams: {
-//         ...params,
-//       },
-//     });
+export async function fetchVendorsSelected() {
+  const url = process.env.NEXT_PUBLIC_SHEETS_API_CSV_URL!;
+  return fetchFromSheetsCsv(url, VendorSelectedListSchema);
+}
 
-//     const data: T = await response.json();
-
-//     return data;
-//   },
-
-//   // async getById({ url, id }: GetByIdProps) {
-//   //   const response = await iaWaves.get(`${url}/${id}`, {
-
-//   //   });
-
-//   //   const data = await response.json();
-
-//   //   return data;
-//   // },
-
-//   async create<T>({ url, json }: CreateProps): Promise<T> {
-//     const response = await botecagem.post(url, {
-//       json,
-//     });
-//     const data: T = await response.json();
-//     return data;
-//   },
-
-//   async edit<T>({ url, json, id }: EditProps) {
-//     const response = await botecagem.put(`${url}/${id}`, {
-//       json,
-//     });
-//     const data: T = await response.json();
-//     return data;
-//   },
-
-//   // async delete({ url, service, id }: DeleteProps) {
-//   //   const response = await http[service].delete(`${url}/${id}`);
-//   //   return response;
-//   // },
-// };
+export async function fetchVendorsInterested() {
+  const url = process.env.NEXT_PUBLIC_SHEETS_CSV_URL!;
+  console.log(url)
+  return fetchFromSheetsCsv(url, VendorPublicListSchema); 
+}

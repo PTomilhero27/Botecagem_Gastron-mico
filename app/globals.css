@@ -2,4 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+:root {
+  color-scheme: light;
+}
+
+.doc {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #111;
+}
+
+
+
+.avoid-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.page-break {
+  break-after: page;
+  page-break-after: always;
+}
+
+/* Se for linha/underline, evita “comer” embaixo */
+.line {
+  display: block;
+  border-bottom: 1px solid #111;
+  height: 14px;
+}
+
+.sig-line {
+  display: inline-block;
+  border-bottom: 1px solid #111;
+  min-width: 260px;
+  height: 14px;
+}
+
+/* evita cortar texto */
+.pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

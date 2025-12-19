@@ -20,3 +20,62 @@ export const VendorPublicSchema = z.object({
 });
 
 export const VendorPublicListSchema = z.array(VendorPublicSchema);
+
+
+export const VendorSelectedSchema = z.object({
+  // =========================
+  // 1️⃣ IDENTIFICAÇÃO
+  // =========================
+  person_type: z.string(),
+
+  // =========================
+  // 2️⃣ PESSOA FÍSICA
+  // =========================
+  pf_full_name: z.string().optional(),
+  pf_cpf: z.string().optional(),
+  pf_brand_name: z.string().optional(),
+
+  // =========================
+  // 3️⃣ PESSOA JURÍDICA
+  // =========================
+  pj_cnpj: z.string().optional(),
+  pj_legal_representative_name: z.string().optional(),
+  pj_legal_representative_cpf: z.string().optional(),
+  pj_state_registration: z.string().optional(),
+  pj_brand_name: z.string().optional(),
+
+  // =========================
+  // 4️⃣ CONTATO
+  // =========================
+  contact_phone: z.string(),
+  contact_email: z.string().email(),
+
+  // =========================
+  // 5️⃣ ENDEREÇO
+  // =========================
+  address_full: z.string(),
+  address_zipcode: z.string(),
+  address_city: z.string(),
+  address_state: z.string(),
+
+  // =========================
+  // 6️⃣ DADOS FINANCEIROS
+  // =========================
+  bank_name: z.string().optional(),
+  bank_agency: z.string().optional(),
+  bank_account: z.string().optional(),
+
+  pix_key: z.string(),
+  pix_favored_name: z.string(),
+
+  // =========================
+  // 7️⃣ TERMOS / CONTROLE
+  // =========================
+  terms_accepted: z.string(),
+
+  status: z.enum(["selecionado", "ativo", "inativo", "cancelado"]).default("selecionado"),
+  source_form: z.enum(["google_forms", "admin", "api"]).default("google_forms"),
+  form_submitted_at: z.string().optional(),
+});
+
+export const VendorSelectedListSchema = z.array(VendorSelectedSchema);

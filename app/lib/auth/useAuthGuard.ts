@@ -13,7 +13,6 @@ type GuardOptions = {
 export function useAuthGuard(options?: GuardOptions) {
     const router = useRouter();
     const toast = useToast();
-    console.log("'askdjs")
     useEffect(() => {
         let mounted = true;
 
