@@ -5,7 +5,6 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
 export function registerAuthListener(router: AppRouterInstance) {
 
   const { data } = supabase.auth.onAuthStateChange((event) => {
-    console.log(event)
     if (event === "SIGNED_OUT") {
       toast({
         variant: "warning",

@@ -14,7 +14,7 @@ export default function Login() {
     (async () => {
       const session = await getSession();
       if (session) {
-        router.push("/pages/dashboard");
+        router.push("/");
         router.refresh();
         return;
       }

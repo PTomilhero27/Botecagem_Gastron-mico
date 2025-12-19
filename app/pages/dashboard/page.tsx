@@ -11,12 +11,13 @@ import { Stats } from "@/app/pages/dashboard/components/Stats";
 import { VendorsTable } from "@/app/pages/dashboard/components/table/VendorsTable";
 import { VendorDetailsModal } from "@/app/pages/dashboard/components/modals/VendorDetailsModal";
 import { WhatsappQrModal } from "@/app/pages/dashboard/components/modals/WhatsappQrModal";
-import { fetchVendorsFromSheets } from "@/app/services/http";
 import { mapSheetToVendor } from "@/app/services/mapper/mapVendedor";
 import { SearchOverlay } from "./components/SearchOverlay";
 import { useAuthGuard } from "@/app/lib/auth/useAuthGuard";
 import { getWhatsappTemplate, saveWhatsappTemplate } from "@/app/services/settings";
 import { toast } from "./components/ui/toast/use-toast";
+import { Breadcrumbs } from "@/app/components/Breadcrumbs";
+import { fetchVendorsInterested } from "@/app/services";
 
 export default function Dashboard() {
 
@@ -31,13 +32,12 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-    fetchVendorsFromSheets()
+    fetchVendorsInterested()
       .then((data) => {
-        console.log("DADOS VINDOS DA PLANILHA:", data);
         setVendors(data.map(mapSheetToVendor));
       })
       .catch((err) => {
-        console.error("ERRO AO BUSCAR PLANILHA:", err);
+        console.log(err)
       });
   }, []);
 
@@ -82,7 +82,7 @@ export default function Dashboard() {
   const [isSaving, setIsSaving] = useState(false);
   const lastSavedRef = useRef<string>("");
 
-  useEffect(() => { getWhatsappTemplate() .then((row) => setMessage(row.value)) .catch(console.error); }, []);
+  useEffect(() => { getWhatsappTemplate().then((row) => setMessage(row.value)).catch(console.error); }, []);
 
   const setLastSaved = (v: string) => {
     lastSavedRef.current = v;
@@ -154,6 +154,12 @@ export default function Dashboard() {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/pages/home" },
+          { label: "Cadastrados" },
+        ]}
+      />
       <Header
         total={total}
         filtered={totalFiltered}
