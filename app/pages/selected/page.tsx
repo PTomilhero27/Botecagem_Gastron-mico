@@ -4,9 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthGuard } from "@/app/lib/auth/useAuthGuard";
 import { useRouter } from "next/navigation";
 
-import { VendorStatus } from "@/app/lib/status";
-import { Filters, FiltersState } from "@/app/pages/dashboard/components/Filters";
-import { Stats } from "@/app/pages/dashboard/components/Stats";
+import {
+  STATUS_LABEL,
+  STATUS_OPTIONS,
+  STATUS_VALUE_BY_LABEL,
+  VendorStatus,
+} from "@/app/lib/status";
 import { Breadcrumbs } from "@/app/components/Breadcrumbs";
 
 import { SelectedTable } from "./components/SelectedTable";
@@ -16,6 +19,14 @@ import { VendorSelected } from "@/lib/types";
 import { VendorDetailsModalSelected } from "./components/VendorDetailsModalSelected";
 
 import { useContractPreview } from "@/app/lib/contractPreview/ContractPreviewContext";
+import {
+  fetchStatusesByVendorIds,
+  syncVendorsFromSheetIds,
+  updateVendorStatus,
+} from "@/app/services/settings";
+import { VendorStatusModal } from "./components/VendorStatusModal";
+import { Filters, FiltersState } from "./components/Filters";
+import { SearchOverlaySelected } from "./components/SearchOverlaySelected";
 
 export default function SelecionadosPage() {
   useAuthGuard({
@@ -30,66 +41,109 @@ export default function SelecionadosPage() {
   const [selected, setSelected] = useState<VendorSelected | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const [statusByKey, setStatusByKey] = useState<Record<string, VendorStatus | undefined>>({});
+  const [statusByKey, setStatusByKey] = useState<
+    Record<string, VendorStatus | undefined>
+  >({});
+  const [statusOpen, setStatusOpen] = useState(false);
 
   const [filters, setFilters] = useState<FiltersState>({
-    q: "",
-    tipo: "",
-    tenda: "",
-    energia: "",
-    gas: "",
-    equip: "",
+    status: "",
   });
 
-  useEffect(() => {
-    fetchVendorsSelected()
-      .then((data) => setVendors(data.map(mapRegistrySheetToVendor)))
-      .catch(console.error);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+
+
+  // ✅ opções do select em "label bonito"
+  const statusOptionsLabels = useMemo(() => {
+    return STATUS_OPTIONS.map((s) => STATUS_LABEL[s]);
   }, []);
 
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await fetchVendorsSelected();
+        const mapped = data.map(mapRegistrySheetToVendor);
 
-  const selecionados = vendors;
+        const sheetIds = mapped.map((v) => v.vendor_id).filter(Boolean);
 
-  /**
-   * 🔹 Nome da marca (PF ou PJ)
-   */
-  function brandName(v: VendorSelected) {
-    return v.person_type === "pf"
-      ? v.pf_brand_name ?? ""
-      : v.pj_brand_name ?? "";
-  }
+        const result = await syncVendorsFromSheetIds(sheetIds);
+        console.log("SYNC RESULT:", result);
 
-  /**
-   * 🔹 Nome da pessoa / responsável
-   */
-  function displayName(v: VendorSelected) {
-    return v.person_type === "pf"
-      ? v.pf_full_name ?? ""
-      : v.pj_legal_representative_name ?? "";
-  }
+        const statusRows = await fetchStatusesByVendorIds(sheetIds);
 
-  const filtered = useMemo(() => {
-    const q = filters.q.toLowerCase();
+        const map: Record<string, VendorStatus> = {};
+        for (const row of statusRows) map[row.vendor_id] = row.status;
 
-    return selecionados.filter((v) => {
-      const matchQ =
-        !q ||
-        [
-          displayName(v),
-          brandName(v),
-          v.vendor_id,
-          v.contact_phone,
-          v.contact_email,
-          v.address_city,
-          v.address_state,
-        ].some((x) => (x || "").toLowerCase().includes(q));
+        setStatusByKey(map);
+        setVendors(mapped);
+      } catch (e) {
+        console.error(e);
+      }
+    }
 
-      return matchQ;
+    load();
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      // se estiver digitando em input/textarea, não abre
+      const el = e.target as HTMLElement | null;
+      const isTyping =
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.getAttribute("contenteditable") === "true");
+
+      if (isTyping) return;
+
+      if (e.key === "/") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const filteredBySearch = useMemo(() => {
+    const q = searchValue.trim();
+    if (!q) return vendors;
+
+    const qText = q
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
+
+    const qDigits = q.replace(/\D/g, "");
+
+    return vendors.filter((v) => {
+      const name =
+        v.pf_brand_name ||
+        v.pj_brand_name ||
+        v.pf_full_name ||
+        v.pj_legal_representative_name ||
+        "";
+
+      const cpf = v.pf_cpf || v.pj_legal_representative_cpf || "";
+      const cnpj = v.pj_cnpj || "";
+      const phone = v.contact_phone || "";
+
+      const hayText = [name, cpf, cnpj, phone]
+        .join(" ")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "");
+
+      const hayDigits = [cpf, cnpj, phone].join(" ").replace(/\D/g, "");
+
+      if (qDigits.length >= 3) return hayDigits.includes(qDigits);
+      return hayText.includes(qText);
     });
-  }, [filters, selecionados]);
+  }, [vendors, searchValue]);
 
-  const total = selecionados.length;
-  const totalFiltered = filtered.length;
+
 
   function openDetails(v: VendorSelected) {
     setSelected(v);
@@ -97,13 +151,36 @@ export default function SelecionadosPage() {
   }
 
   function openStatus(v: VendorSelected) {
-    openDetails(v);
+    setSelected(v);
+    setStatusOpen(true);
   }
 
   function downloadContract(v: VendorSelected) {
     setVendor(v);
     router.push("/pages/selected/contract-preview");
   }
+
+  async function handleChangeStatus(vendorId: string, status: VendorStatus) {
+    await updateVendorStatus(vendorId, status);
+    setStatusByKey((prev) => ({ ...prev, [vendorId]: status }));
+  }
+
+  // ✅ aplica filtro (label -> status -> compara com statusByKey)
+  const filteredVendors = useMemo(() => {
+    const selectedLabel = (filters.status || "").trim();
+    if (!selectedLabel) return vendors;
+
+    const wantedStatus = STATUS_VALUE_BY_LABEL[selectedLabel];
+    if (!wantedStatus) return vendors;
+
+    return vendors.filter((v) => {
+      const id = v.vendor_id;
+      if (!id) return false;
+
+      const current = statusByKey[id];
+      return current === wantedStatus;
+    });
+  }, [vendors, statusByKey, filters.status]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
@@ -120,45 +197,27 @@ export default function SelecionadosPage() {
             Selecionados <span className="text-orange-500">Botecagem</span>
           </div>
           <div className="mt-1 text-sm text-zinc-600">
-            {totalFiltered} de {total} registros
+            {filteredVendors.length} registros
           </div>
         </div>
-
-        <button
-          onClick={() =>
-            setFilters({
-              q: "",
-              tipo: "",
-              tenda: "",
-              energia: "",
-              gas: "",
-              equip: "",
-            })
-          }
-          className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
-        >
-          Limpar filtros
-        </button>
       </div>
-
-      <Stats
-        total={total}
-        filtered={totalFiltered}
-        tiposCount={0}
-        topTiposHint="—"
-        energiaSim={0}
-        gasSim={0}
-      />
 
       <Filters
         filters={filters}
         setFilters={setFilters}
-        tipos={[]}
-        tendas={[]}
+        items={[
+          {
+            key: "status",
+            label: "Status",
+            options: statusOptionsLabels, // ✅ agora é string[]
+            placeholder: "Todos",
+          },
+        ]}
+        columns={6}
       />
 
       <SelectedTable
-        rows={filtered}
+        rows={filteredVendors}
         statusByKey={statusByKey}
         onDownloadContract={downloadContract}
         onDetails={openDetails}
@@ -169,6 +228,35 @@ export default function SelecionadosPage() {
         vendor={selected}
         open={detailsOpen}
         onClose={() => setDetailsOpen(false)}
+      />
+
+      <VendorStatusModal
+        vendor={selected}
+        open={statusOpen}
+        onClose={() => setStatusOpen(false)}
+        currentStatus={
+          selected?.vendor_id
+            ? statusByKey[selected.vendor_id] ?? "aguardando_assinatura"
+            : "aguardando_assinatura"
+        }
+        onSave={handleChangeStatus}
+      />
+
+      <SearchOverlaySelected
+        open={searchOpen}
+        value={searchValue}
+        onChange={setSearchValue}
+        onCloseKeepFilter={() => setSearchOpen(false)}
+        onCloseAndClear={() => {
+          setSearchValue("");
+          setSearchOpen(false);
+        }}
+        rows={vendors}
+        onPick={(row) => {
+          // opcional: ao clicar, já abre detalhes
+          setSearchOpen(false);
+          openDetails(row);
+        }}
       />
     </main>
   );
