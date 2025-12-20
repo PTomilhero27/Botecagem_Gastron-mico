@@ -159,7 +159,7 @@ export function SelectedTable({
                       {(r.address_city || "—") + (r.address_state ? `/${r.address_state}` : "")}
                     </td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 w-8 text-center">
                       <StatusPill value={status} />
                     </td>
 

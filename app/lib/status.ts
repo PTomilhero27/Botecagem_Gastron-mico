@@ -13,3 +13,12 @@ export const STATUS_LABEL: Record<VendorStatus, string> = {
   confirmado: "Confirmado",
   desistente: "Desistente",
 };
+
+// ✅ inverso: "Aguardando assinatura" -> "aguardando_assinatura"
+export const STATUS_VALUE_BY_LABEL: Record<string, VendorStatus> =
+  Object.fromEntries(
+    Object.entries(STATUS_LABEL).map(([status, label]) => [
+      label,
+      status as VendorStatus,
+    ])
+  );
