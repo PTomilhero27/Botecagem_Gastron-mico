@@ -48,7 +48,11 @@ export const VendorSelectedSchema = z.object({
   // 4️⃣ CONTATO
   // =========================
   contact_phone: z.string(),
-  contact_email: z.string().email(),
+  contact_email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Email inválido"),
 
   // =========================
   // 5️⃣ ENDEREÇO
