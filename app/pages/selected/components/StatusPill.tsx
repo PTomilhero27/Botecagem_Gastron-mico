@@ -5,11 +5,12 @@ import { VendorStatus } from "@/app/lib/status";
 const STATUS_UI: Record<VendorStatus, { label: string; cls: string }> = {
   aguardando_assinatura: {
     label: "Aguardando assinatura",
-    cls: "bg-amber-50 text-amber-700 ring-amber-200",
+    cls: "bg-sky-50 text-sky-700 ring-sky-200",
   },
   aguardando_pagamento: {
     label: "Aguardando pagamento",
     cls: "bg-orange-50 text-orange-700 ring-orange-200",
+
   },
   confirmado: {
     label: "Confirmado",
@@ -18,8 +19,10 @@ const STATUS_UI: Record<VendorStatus, { label: string; cls: string }> = {
   desistente: {
     label: "Desistente",
     cls: "bg-zinc-100 text-zinc-600 ring-zinc-200",
+
   },
 };
+
 
 export function StatusPill({ value }: { value: VendorStatus }) {
   const ui =

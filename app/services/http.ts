@@ -6,6 +6,12 @@ import { ZodSchema } from "zod";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+export function mustEnv(name: string) {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing env: ${name}`);
+  return v;
+}
+
 export const supabaseRest = ky.create({
   prefixUrl: `${SUPABASE_URL}/rest/v1/`,
   timeout: 180000,

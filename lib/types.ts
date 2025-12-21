@@ -69,6 +69,9 @@ export type VendorSelected = {
   pix_key: string;
   pix_favored_name: string;
 
+
+  assinafy_document_id: string
+  signerId: string;
   // =========================
   // TERMOS
   // =========================

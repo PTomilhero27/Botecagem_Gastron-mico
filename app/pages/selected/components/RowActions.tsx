@@ -1,21 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal, Download, Info, CheckCircle2 } from "lucide-react";
+import { MoreHorizontal, Download, Info, CheckCircle2, PenLine } from "lucide-react";
 
 export function RowActions({
   onDownload,
   onDetails,
   onChangeStatus,
+  onSignatureLink,
 }: {
   onDownload: () => void;
   onDetails: () => void;
   onChangeStatus: () => void;
+  onSignatureLink: () => void;
 }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
 
-  // Fecha clicando fora
   useEffect(() => {
     function onDown(e: MouseEvent) {
       if (!open) return;
@@ -26,7 +27,6 @@ export function RowActions({
     return () => window.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  // Fecha com ESC
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (!open) return;
@@ -45,12 +45,12 @@ export function RowActions({
     <div
       ref={wrapRef}
       className="relative inline-flex justify-end"
-      onMouseEnter={() => setOpen(true)} // hover abre (desktop)
-      onMouseLeave={() => setOpen(false)} // hover fecha (desktop)
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
     >
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)} // click alterna (mobile/desktop)
+        onClick={() => setOpen((v) => !v)}
         className="rounded-xl border border-zinc-200 bg-white p-2 text-zinc-700 hover:bg-zinc-50"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -72,6 +72,16 @@ export function RowActions({
           >
             <Download size={16} />
             Baixar contrato
+          </button>
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => run(onSignatureLink)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-50"
+          >
+            <PenLine size={16} />
+            Link de assinatura
           </button>
 
           <button

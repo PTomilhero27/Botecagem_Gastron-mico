@@ -29,6 +29,8 @@ export type VendorRegistryFromSheet = {
   pix_favored_name?: string;
 
   terms_accepted?: string;
+  assinafy_document_id ?: string;
+  signerId?: string;
 };
 
 function onlyNumbers(v?: string) {
@@ -124,6 +126,9 @@ export function mapRegistrySheetToVendor(
     // =========================
     terms_accepted: (row.terms_accepted ?? "").trim(),
     status: "selecionado",
+
+    assinafy_document_id: row.assinafy_document_id ?? "",
+    signerId: row.signerId ?? ""
 
   };
 }

@@ -1,6 +1,9 @@
 // app/services/settings.ts
 import { supabase } from "@/app/lib/supabase/client";
 import { VendorStatus } from "../lib/status";
+import { ContractRow } from "../types/_db";
+import { NextApiRequest, NextApiResponse } from "next";
+import { mustEnv } from "./http";
 
 export async function getWhatsappTemplate() {
   const { data, error } = await supabase
@@ -104,10 +107,91 @@ export async function fetchStatusesByVendorIds(vendorIds: string[]) {
 }
 
 export async function updateVendorStatus(vendorId: string, status: VendorStatus) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("vendor_status")
     .update({ status })
     .eq("vendor_id", vendorId);
 
   if (error) throw error;
+
+  return data
+}
+
+// 1) buscar contrato por vendor_id
+export async function fetchContractByVendorId(vendorId: string) {
+  const { data, error } = await supabase
+    .from("contracts")
+    .select("id,vendor_id,cpf_cnpj,email,status,sign_provider,sign_request_id,sign_url,signed_pdf_url")
+    .eq("vendor_id", vendorId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as ContractRow | null;
+}
+
+// 2) criar contrato (uuid é gerado pelo banco)
+export async function createContract(params: {
+  vendorId: string;
+  cpfCnpj?: string | null;
+  email?: string | null;
+  status?: string;
+  signProvider?: string;
+}) {
+  const {
+    vendorId,
+    cpfCnpj = vendorId,
+    email = null,
+    status = "aguardando_assinatura",
+    signProvider = "assinafy",
+  } = params;
+
+  const { data, error } = await supabase
+    .from("contracts")
+    .insert({
+      vendor_id: vendorId,
+      cpf_cnpj: cpfCnpj,
+      email,
+      status,
+      sign_provider: signProvider,
+    })
+    .select("id,vendor_id,cpf_cnpj,email,status,sign_provider,sign_request_id,sign_url,signed_pdf_url")
+    .single();
+
+  if (error) throw error;
+  return data as ContractRow;
+}
+
+// 3) salvar retorno da assinatura (link/id)
+export async function updateContractSigning(params: {
+  contractId: string;
+  signUrl: string;
+  signRequestId?: string | null;
+  status?: string;
+}) {
+  const { contractId, signUrl, signRequestId = null, status = "aguardando_assinatura" } = params;
+
+  const { data, error } = await supabase
+    .from("contracts")
+    .update({
+      sign_url: signUrl,
+      sign_request_id: signRequestId,
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", contractId)
+    .select("id,vendor_id,cpf_cnpj,email,status,sign_provider,sign_request_id,sign_url,signed_pdf_url")
+    .single();
+
+  if (error) throw error;
+  return data as ContractRow;
+}
+
+// 4) helper: garante contrato (acha ou cria)
+export async function ensureContract(params: { vendorId: string; email?: string | null }) {
+  const { vendorId, email = null } = params;
+
+  const existing = await fetchContractByVendorId(vendorId);
+  if (existing) return existing;
+
+  return createContract({ vendorId, email });
 }
