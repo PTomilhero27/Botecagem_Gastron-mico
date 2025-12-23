@@ -95,10 +95,13 @@ export function ContractHtml({ vendor }: { vendor: VendorSelected }) {
         2.1. O presente contrato tem como objeto a cessão temporária de espaço e estrutura para exploração comercial de produtos gastronômicos pelo CONTRATADO durante o período do evento, conforme a modalidade de barraca escolhida.
         <br />_________________________________________________________________________________<br />
         <b> CLÁUSULA 3 – DA ESTRUTURA CONTRATADA</b><br />
-        3.1. O EXPOSITOR poderá optar por uma das seguintes estruturas:<br />
-        <b>a) Barraca Padrão – 3m x 3m (9 m²)</b> - Valor: taxa fixa de R$ 2.500,00 + 15% (quinze por cento) sobre o faturamento bruto. <br />
-        <b>b) Barraca Dupla / Frente – 3m x 6m (18 m²)</b> - Valor: taxa fixa de R$ 4.500,00 + 15% (quinze por cento) sobre o faturamento bruto.<br />
-        3.2. A estrutura inclui barraca, iluminação básica e pontos de eletricidade, conforme informado previamente pelo EXPOSITOR.
+        3.1. O EXPOSITOR deverá escolher, no ato do preenchimento da ficha de inscrição anexa, a estrutura a ser utilizada no evento, sendo esta escolha determinante para o tipo de contratação e valores aplicáveis.<br />
+        3.2. As estruturas disponibilizadas ao EXPOSITOR são as seguintes:<br />
+        a) Barraca Padrão – 3m x 3m (9 m²), pelo valor de R$ 2.500,00 (dois mil e quinhentos reais), acrescido de 15% (quinze por cento) sobre o faturamento bruto;<br />
+        b) Barraca Dupla – 3m x 6m (18 m²), pelo valor de R$ 4.500,00 (quatro mil e quinhentos reais), acrescido de 15% (quinze por cento) sobre o faturamento bruto;<br />
+        c) Barraca Reduzida – 2m x 2m (4 m²), pelo valor de R$ 1.250,00 (mil duzentos e cinquenta reais), acrescido de 15% (quinze por cento) sobre o faturamento bruto.<br />
+        3.3. Para expositores especiais, a Barraca Padrão (3m x 3m) será disponibilizada pelo valor fixo de R$ 2.000,00 (dois mil reais), nas condições previamente aprovadas pela ORGANIZAÇÃO do evento.<br />
+        3.4. A estrutura contratada inclui barraca, iluminação básica e pontos de eletricidade, conforme informações prestadas pelo EXPOSITOR na ficha de inscrição.
         <br />_________________________________________________________________________________<br />
         <div className="avoid-break">
           <b>CLÁUSULA 4 – DAS CONDIÇÕES FINANCEIRAS</b><br />
