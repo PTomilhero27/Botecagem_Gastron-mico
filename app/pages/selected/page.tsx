@@ -27,6 +27,7 @@ import {
 import { VendorStatusModal } from "./components/VendorStatusModal";
 import { Filters, FiltersState } from "./components/Filters";
 import { SearchOverlaySelected } from "./components/SearchOverlaySelected";
+import { StatusStats } from "./components/StatusStats";
 
 export default function SelecionadosPage() {
   useAuthGuard({
@@ -168,7 +169,16 @@ export default function SelecionadosPage() {
   // ✅ aplica filtro (label -> status -> compara com statusByKey)
   const filteredVendors = useMemo(() => {
     const selectedLabel = (filters.status || "").trim();
-    if (!selectedLabel) return vendors;
+
+    // 🔴 SEM filtro → esconde desistentes
+    if (!selectedLabel) {
+      return vendors.filter((v) => {
+        const id = v.vendor_id;
+        if (!id) return false;
+        return statusByKey[id] !== "desistente";
+      });
+    }
+
 
     const wantedStatus = STATUS_VALUE_BY_LABEL[selectedLabel];
     if (!wantedStatus) return vendors;
@@ -181,6 +191,29 @@ export default function SelecionadosPage() {
       return current === wantedStatus;
     });
   }, [vendors, statusByKey, filters.status]);
+
+
+  // Contar quantas pessoas tem em cada status
+  const statusCounts = useMemo(() => {
+    const counts: Record<VendorStatus, number> = {
+      aguardando_assinatura: 0,
+      aguardando_pagamento: 0,
+      confirmado: 0,
+      desistente: 0,
+    };
+
+    vendors.forEach((v) => {
+      const id = v.vendor_id;
+      if (!id) return;
+
+      const status = statusByKey[id] ?? "aguardando_assinatura";
+      counts[status]++;
+    });
+
+    return counts;
+  }, [vendors, statusByKey]);
+
+
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
@@ -201,6 +234,11 @@ export default function SelecionadosPage() {
           </div>
         </div>
       </div>
+
+      <StatusStats
+        total={vendors.length}
+        byStatus={statusCounts}
+      />
 
       <Filters
         filters={filters}
