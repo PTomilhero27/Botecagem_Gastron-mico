@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuthGuard } from "@/app/lib/auth/useAuthGuard";
 import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
 import {
   STATUS_LABEL,
@@ -29,6 +30,21 @@ import { Filters, FiltersState } from "./components/Filters";
 import { SearchOverlaySelected } from "./components/SearchOverlaySelected";
 import { StatusStats } from "./components/StatusStats";
 
+import { SelectContractModal } from "./components/SelectContractModal";
+import { useToast } from "@/app/pages/dashboard/components/ui/toast/use-toast";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+type SelectedTemplate = {
+  id: string;
+  title: string;
+  status?: string | null;
+  has_registration?: boolean | null;
+};
+
 export default function SelecionadosPage() {
   useAuthGuard({
     redirectTo: "/pages/login",
@@ -36,6 +52,7 @@ export default function SelecionadosPage() {
   });
 
   const router = useRouter();
+  const toast = useToast();
   const { setVendor } = useContractPreview();
 
   const [vendors, setVendors] = useState<VendorSelected[]>([]);
@@ -54,12 +71,17 @@ export default function SelecionadosPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
+  // ✅ contrato global
+  const [contractOpen, setContractOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<SelectedTemplate | null>(null);
 
   // ✅ opções do select em "label bonito"
   const statusOptionsLabels = useMemo(() => {
     return STATUS_OPTIONS.map((s) => STATUS_LABEL[s]);
   }, []);
 
+  // ✅ carrega vendors + statuses
   useEffect(() => {
     async function load() {
       try {
@@ -86,9 +108,39 @@ export default function SelecionadosPage() {
     load();
   }, []);
 
+  // ✅ NOVO: ao entrar na tela, busca o contrato selected
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadSelectedTemplate() {
+      const { data, error } = await supabase
+        .from("document_templates")
+        .select("id,title,status,has_registration")
+        .eq("status", "selected")
+        .limit(1)
+        .maybeSingle();
+
+      if (!mounted) return;
+
+      if (error) {
+        console.error(error);
+        // opcional: toast só se quiser
+        // toast.toast({ variant: "error", title: "Erro ao carregar contrato selecionado" });
+        return;
+      }
+
+      setSelectedTemplate((data as any) ?? null);
+    }
+
+    loadSelectedTemplate();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      // se estiver digitando em input/textarea, não abre
       const el = e.target as HTMLElement | null;
       const isTyping =
         el &&
@@ -144,8 +196,6 @@ export default function SelecionadosPage() {
     });
   }, [vendors, searchValue]);
 
-
-
   function openDetails(v: VendorSelected) {
     setSelected(v);
     setDetailsOpen(true);
@@ -157,7 +207,16 @@ export default function SelecionadosPage() {
   }
 
   function downloadContract(v: VendorSelected) {
-    setVendor(v);
+    if (!selectedTemplate) {
+      toast.toast({
+        variant: "error",
+        title: "Selecione um contrato antes de baixar",
+      });
+      return;
+    }
+
+    // por enquanto: só navega pro preview (depois a gente passa templateId no context)
+    setVendor(v as any);
     router.push("/pages/selected/contract-preview");
   }
 
@@ -166,34 +225,27 @@ export default function SelecionadosPage() {
     setStatusByKey((prev) => ({ ...prev, [vendorId]: status }));
   }
 
-  // ✅ aplica filtro (label -> status -> compara com statusByKey)
   const filteredVendors = useMemo(() => {
     const selectedLabel = (filters.status || "").trim();
 
-    // 🔴 SEM filtro → esconde desistentes
     if (!selectedLabel) {
-      return vendors.filter((v) => {
+      return filteredBySearch.filter((v) => {
         const id = v.vendor_id;
         if (!id) return false;
         return statusByKey[id] !== "desistente";
       });
     }
 
-
     const wantedStatus = STATUS_VALUE_BY_LABEL[selectedLabel];
-    if (!wantedStatus) return vendors;
+    if (!wantedStatus) return filteredBySearch;
 
-    return vendors.filter((v) => {
+    return filteredBySearch.filter((v) => {
       const id = v.vendor_id;
       if (!id) return false;
-
-      const current = statusByKey[id];
-      return current === wantedStatus;
+      return statusByKey[id] === wantedStatus;
     });
-  }, [vendors, statusByKey, filters.status]);
+  }, [filteredBySearch, statusByKey, filters.status]);
 
-
-  // Contar quantas pessoas tem em cada status
   const statusCounts = useMemo(() => {
     const counts: Record<VendorStatus, number> = {
       aguardando_assinatura: 0,
@@ -213,8 +265,6 @@ export default function SelecionadosPage() {
     return counts;
   }, [vendors, statusByKey]);
 
-
-
   return (
     <main className="mx-auto max-w-7xl px-4 py-8">
       <Breadcrumbs
@@ -224,7 +274,7 @@ export default function SelecionadosPage() {
         ]}
       />
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-3xl font-extrabold tracking-tight text-zinc-900">
             Selecionados <span className="text-orange-500">Botecagem</span>
@@ -232,13 +282,33 @@ export default function SelecionadosPage() {
           <div className="mt-1 text-sm text-zinc-600">
             {filteredVendors.length} registros
           </div>
+
+          <div className="mt-3 text-sm text-zinc-700">
+            <span className="font-semibold">Contrato selecionado:</span>{" "}
+            {selectedTemplate ? (
+              <span className="font-semibold text-zinc-900">
+                {selectedTemplate.title}
+              </span>
+            ) : (
+              <span className="text-zinc-500 italic">
+                nenhum (clique em “Selecionar contrato”)
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ✅ só o botão de selecionar */}
+        <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={() => setContractOpen(true)}
+            className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-extrabold text-white shadow hover:bg-orange-600"
+          >
+            Selecionar contrato
+          </button>
         </div>
       </div>
 
-      <StatusStats
-        total={vendors.length}
-        byStatus={statusCounts}
-      />
+      <StatusStats total={vendors.length} byStatus={statusCounts} />
 
       <Filters
         filters={filters}
@@ -247,7 +317,7 @@ export default function SelecionadosPage() {
           {
             key: "status",
             label: "Status",
-            options: statusOptionsLabels, // ✅ agora é string[]
+            options: statusOptionsLabels,
             placeholder: "Todos",
           },
         ]}
@@ -291,10 +361,16 @@ export default function SelecionadosPage() {
         }}
         rows={vendors}
         onPick={(row) => {
-          // opcional: ao clicar, já abre detalhes
           setSearchOpen(false);
           openDetails(row);
         }}
+      />
+
+      <SelectContractModal
+        open={contractOpen}
+        onClose={() => setContractOpen(false)}
+        selectedTemplateId={selectedTemplate?.id ?? null}
+        onSelected={(tpl) => setSelectedTemplate(tpl)}
       />
     </main>
   );

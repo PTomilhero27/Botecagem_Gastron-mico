@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download } from "lucide-react";
 import { ContractHtml } from "./ContractHtml";
@@ -29,6 +29,30 @@ type EnsureContractResponse = {
   created: boolean;
 };
 
+type SelectedTemplate = {
+  id: string;
+  title: string;
+  has_registration?: boolean | null;
+};
+
+function injectAutoPageBreaks(html: string) {
+  if (!html) return "";
+
+  // Antes de qualquer heading que contenha "CLÁUSULA"
+  let out = html.replace(
+    /<(h[1-6])([^>]*)>([\s\S]*?CLÁUSULA[\s\S]*?)<\/\1>/gi,
+    `<div class="page-break"></div><$1$2>$3</$1>`
+  );
+
+  // (Opcional) Antes de "ANEXO", "FICHA CADASTRAL", etc
+  out = out.replace(
+    /<(h[1-6])([^>]*)>([\s\S]*?(ANEXO|FICHA CADASTRAL)[\s\S]*?)<\/\1>/gi,
+    `<div class="page-break"></div><$1$2>$3</$1>`
+  );
+
+  return out;
+}
+
 export default function ContractPreviewPage() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,15 +60,77 @@ export default function ContractPreviewPage() {
 
   const [downloading, setDownloading] = useState(false);
 
+  // ✅ template selecionado
+  const [tplLoading, setTplLoading] = useState(true);
+  const [template, setTemplate] = useState<SelectedTemplate | null>(null);
+  const [templateHtml, setTemplateHtml] = useState<string | null>(null);
+  const [hasRegistration, setHasRegistration] = useState(false);
+
   useEffect(() => {
     if (!vendor) router.replace("/pages/selected");
   }, [vendor, router]);
+
+  // ✅ carrega o contrato selecionado (status=selected) + última versão
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadSelectedTemplate() {
+      try {
+        setTplLoading(true);
+
+        const { data: tpl, error: tplErr } = await supabase
+          .from("document_templates")
+          .select("id,title,has_registration")
+          .eq("status", "selected")
+          .single();
+
+        if (!mounted) return;
+
+        if (tplErr || !tpl) {
+          console.error(tplErr);
+          setTemplate(null);
+          setTemplateHtml(null);
+          setHasRegistration(false);
+          return;
+        }
+
+        setTemplate(tpl as any);
+        setHasRegistration(!!tpl.has_registration);
+
+        const { data: v, error: vErr } = await supabase
+          .from("document_template_versions")
+          .select("content,version_number")
+          .eq("template_id", tpl.id)
+          .order("version_number", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!mounted) return;
+
+        if (vErr || !v?.content) {
+          console.error(vErr);
+          setTemplateHtml(null);
+          return;
+        }
+
+        // content deve ser HTML (string)
+        setTemplateHtml(String(v.content));
+      } finally {
+        if (mounted) setTplLoading(false);
+      }
+    }
+
+    loadSelectedTemplate();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   async function ensureContract(params: {
     vendorId: string;
     email?: string;
     cpfCnpj?: string;
-    brend?: string;
   }) {
     const r = await fetch("/api/contracts/ensure", {
       method: "POST",
@@ -56,7 +142,9 @@ export default function ContractPreviewPage() {
       }),
     });
 
-    const data = (await r.json().catch(() => ({}))) as Partial<EnsureContractResponse> & {
+    const data = (await r.json().catch(() => ({}))) as Partial<
+      EnsureContractResponse
+    > & {
       error?: string;
     };
 
@@ -102,7 +190,6 @@ export default function ContractPreviewPage() {
     return { path };
   }
 
-
   async function savePdfPathInDb(contractId: string, pdfPath: string) {
     const { error } = await supabase
       .from("contracts")
@@ -125,19 +212,23 @@ export default function ContractPreviewPage() {
       return;
     }
 
+    if (!templateHtml) {
+      alert("Nenhum contrato selecionado para gerar o PDF.");
+      return;
+    }
+
     try {
       setDownloading(true);
 
-      // ✅ pega email do vendor (ajuste se seu campo tiver outro nome)
-      const email =
-        String((vendor as any)?.contact_email || (vendor as any)?.email || "").trim();
+      const email = String(
+        (vendor as any)?.contact_email || (vendor as any)?.email || ""
+      ).trim();
 
-
-      // 0) garante que existe linha em public.contracts e pega o contractId
+      // 0) garante linha em public.contracts e pega contractId
       const { contractId } = await ensureContract({
         vendorId,
         email,
-        cpfCnpj: vendorId, // se você tiver CPF/CNPJ real, manda aqui
+        cpfCnpj: vendorId,
       });
 
       const html2pdf = (await import("html2pdf.js")).default;
@@ -160,48 +251,48 @@ export default function ContractPreviewPage() {
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2, backgroundColor: "#ffffff", useCORS: true },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["css", "legacy"] },
+          pagebreak: { mode: ["css", "avoid-all", "legacy"] },
         })
         .from(containerRef.current);
 
+      // 1) gera blob do PDF
       const pdfBlob: Blob =
         typeof worker.outputPdf === "function"
           ? await worker.outputPdf("blob")
           : await worker.output("blob");
 
-      // 1) upload no Storage
+      // 2) upload no Storage
       const { path } = await uploadPdfDirect({
         vendorId,
         pdfBlob,
         filename,
       });
 
-      // 2) salva pdf_path no contrato certo (por id uuid)
+      // 3) salva pdf_path no contrato
       await savePdfPathInDb(contractId, path);
 
-      // 3) opcional: baixar local pro usuário
+      // 4) baixa local pro usuário (opcional, mas você queria)
       await worker.save();
 
-      // 4) atualiza status
+      // 5) atualiza status do vendor
       await updateVendorStatus(vendorId, "aguardando_pagamento" as any);
 
-      console.log("PDF enviado para o Storage em:", path);
-
-      
-
+      // 6) volta
       clear();
       router.push("/pages/selected");
     } catch (e) {
       console.error(e);
       alert(
-        e instanceof Error
-          ? e.message
-          : "Erro ao gerar/enviar PDF. Veja o console."
+        e instanceof Error ? e.message : "Erro ao gerar/enviar PDF. Veja o console."
       );
     } finally {
       setDownloading(false);
     }
   }
+
+  const processedHtml = useMemo(() => {
+    return templateHtml ? injectAutoPageBreaks(templateHtml) : "";
+  }, [templateHtml]);
 
   if (!vendor) return <div className="p-10 text-center">Carregando contrato…</div>;
 
@@ -209,7 +300,7 @@ export default function ContractPreviewPage() {
     <main className="relative mx-auto max-w-[794px] bg-white">
       <button
         onClick={downloadPdf}
-        disabled={downloading}
+        disabled={downloading || tplLoading || !templateHtml}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-orange-500 px-5 py-3 text-white shadow-lg hover:bg-orange-600 disabled:opacity-60"
       >
         <Download size={18} />
@@ -217,7 +308,22 @@ export default function ContractPreviewPage() {
       </button>
 
       <div ref={containerRef} id="contract-preview" className="p-10">
-        <ContractHtml vendor={vendor} />
+        {tplLoading ? (
+          <div className="py-10 text-center text-sm text-zinc-500">
+            Carregando contrato selecionado…
+          </div>
+        ) : !templateHtml ? (
+          <div className="py-10 text-center text-sm text-zinc-500">
+            Nenhum contrato selecionado (status = selected).
+          </div>
+        ) : (
+          <ContractHtml
+            vendor={vendor}
+            templateTitle={template?.title || ""}
+            templateHtml={processedHtml}
+            hasRegistration={hasRegistration}
+          />
+        )}
       </div>
     </main>
   );

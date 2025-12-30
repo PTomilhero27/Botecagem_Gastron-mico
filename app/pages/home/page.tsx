@@ -94,11 +94,7 @@ export default function HomePage() {
           title="Dashboard cadastrados"
           desc="Todos que preencheram o primeiro formulário."
           icon={<Users width={18} />}
-          badge={
-            <span className="rounded-full bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-700">
-              principal
-            </span>
-          }
+
         />
 
         <CardLink
@@ -106,11 +102,15 @@ export default function HomePage() {
           title="Dashboard Selecionados"
           desc="selecionados para fazer parte dos expositores"
           icon={<FileSignature width={18} />}
-          badge={
-            <span className="rounded-full bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-700">
-              em breve
-            </span>
-          }
+
+        />
+
+
+        <CardLink
+          href="/pages/document-templates"
+          title="Contratos"
+          desc="Crie, edite e gerencie contratos para assinatura dos expositores"
+          icon={<FileSignature width={18} />}
         />
 
       </div>
