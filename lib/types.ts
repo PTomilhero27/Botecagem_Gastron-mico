@@ -68,7 +68,7 @@ export type VendorSelected = {
   bank_account?: string;
   pix_key: string;
   pix_favored_name: string;
-
+  type_tend: string
 
   assinafy_document_id: string
   signerId: string;

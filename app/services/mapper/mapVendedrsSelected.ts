@@ -28,6 +28,7 @@ export type VendorRegistryFromSheet = {
   pix_key?: string;
   pix_favored_name?: string;
 
+  type_tend: string
   terms_accepted?: string;
   assinafy_document_id ?: string;
   signerId?: string;
@@ -120,7 +121,7 @@ export function mapRegistrySheetToVendor(
 
     pix_key,
     pix_favored_name: (row.pix_favored_name ?? "").trim(),
-
+    type_tend: (row.type_tend ?? "").trim(),
     // =========================
     // TERMOS / INTERNOS
     // =========================

@@ -76,6 +76,7 @@ export const VendorSelectedSchema = z.object({
   // 7️⃣ TERMOS / CONTROLE
   // =========================
   terms_accepted: z.string(),
+  type_tend: z.string(),
 
   status: z.enum(["selecionado", "ativo", "inativo", "cancelado"]).default("selecionado"),
   source_form: z.enum(["google_forms", "admin", "api"]).default("google_forms"),
