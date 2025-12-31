@@ -90,9 +90,6 @@ export default function SelecionadosPage() {
 
         const sheetIds = mapped.map((v) => v.vendor_id).filter(Boolean);
 
-        const result = await syncVendorsFromSheetIds(sheetIds);
-        console.log("SYNC RESULT:", result);
-
         const statusRows = await fetchStatusesByVendorIds(sheetIds);
 
         const map: Record<string, VendorStatus> = {};
@@ -215,7 +212,6 @@ export default function SelecionadosPage() {
       return;
     }
 
-    // por enquanto: só navega pro preview (depois a gente passa templateId no context)
     setVendor(v as any);
     router.push("/pages/selected/contract-preview");
   }
@@ -227,7 +223,6 @@ export default function SelecionadosPage() {
 
   const filteredVendors = useMemo(() => {
     const selectedLabel = (filters.status || "").trim();
-
     if (!selectedLabel) {
       return filteredBySearch.filter((v) => {
         const id = v.vendor_id;

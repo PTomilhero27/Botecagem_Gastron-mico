@@ -8,7 +8,7 @@ import { renderForPreview } from "@/app/lib/contractPreview/templateRender";
 type ContractBlock =
   | { id: string; type: "text"; text?: string }
   | { id: string; type: "clause"; clauseNo?: number; title?: string; text?: string; incisos?: { id: string; html?: string }[] }
-  | { id: string; type: string; [k: string]: any };
+  | { id: string; type: string;[k: string]: any };
 
 function formatCpfCnpj(doc?: string) {
   const d = (doc ?? "").replace(/\D/g, "");
@@ -74,8 +74,7 @@ function blocksToHtml(blocks: ContractBlock[]) {
       if (text) {
         const isHtml = /<\/?[a-z][\s\S]*>/i.test(text);
         parts.push(
-          `<div class="mt-2 text-sm leading-relaxed">${
-            isHtml ? text : escapeHtml(text).replaceAll("\n", "<br/>")
+          `<div class="mt-2 text-sm leading-relaxed">${isHtml ? text : escapeHtml(text).replaceAll("\n", "<br/>")
           }</div>`
         );
       }
@@ -135,6 +134,8 @@ export function ContractHtml({
   const city = vendor.address_city ?? "";
   const state = vendor.address_state ?? "";
   const zipcode = vendor.address_zipcode ?? "";
+
+  const type_tend = vendor.type_tend ?? ""
 
   const bankName = vendor.bank_name ?? "";
   const bankAgency = vendor.bank_agency ?? "";
@@ -285,6 +286,15 @@ export function ContractHtml({
                   <div className="text-[11px] font-medium text-zinc-500">E-mail</div>
                   <div className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 font-semibold text-zinc-900 break-words">
                     {email || "—"}
+                  </div>
+                </div>
+
+                <div className="col-span-2">
+                  <div className="text-[11px] font-medium text-zinc-500">
+                    Tipo de barraca
+                  </div>
+                  <div className="mt-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 font-semibold text-zinc-900">
+                    {type_tend || "—"}
                   </div>
                 </div>
 
