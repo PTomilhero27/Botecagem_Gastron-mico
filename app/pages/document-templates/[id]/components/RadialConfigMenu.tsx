@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Eye, Save, UploadCloud, Trash2, Settings, X } from "lucide-react";
+import {
+  Eye,
+  Save,
+  UploadCloud,
+  Trash2,
+  Settings,
+  X,
+  Layers,
+} from "lucide-react";
 import { RadialButton } from "./RadialButton";
 
 export function RadialConfigMenu({
@@ -11,6 +19,10 @@ export function RadialConfigMenu({
   onSaveDraft,
   onPublish,
   onDelete,
+
+  // ✅ NOVO
+  isAddendum,
+  onToggleAddendum,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -19,15 +31,17 @@ export function RadialConfigMenu({
   onSaveDraft?: () => void;
   onPublish?: () => void;
   onDelete?: () => void;
+
+  // ✅ NOVO
+  isAddendum?: boolean;
+  onToggleAddendum?: () => void;
 }) {
   const [rotation, setRotation] = useState(0);
 
   useEffect(() => {
     if (open) {
-      // 3 voltas + 45° pra “parar em X”
       setRotation((r) => r + 1080 + 70);
     } else {
-      // fecha girando (suave)
       setRotation((r) => r + 1080);
     }
   }, [open]);
@@ -39,10 +53,11 @@ export function RadialConfigMenu({
           label: "Preview",
           icon: <Eye size={16} />,
           onClick: onPreview,
-          dx: "-10",
-          dy: "-70",
+          dx: "0",
+          dy: "-90",
         }
       : null,
+
     onSaveDraft
       ? {
           key: "save",
@@ -50,9 +65,10 @@ export function RadialConfigMenu({
           icon: <Save size={16} />,
           onClick: onSaveDraft,
           dx: "-70",
-          dy: "-30",
+          dy: "-50",
         }
       : null,
+
     onPublish
       ? {
           key: "publish",
@@ -60,17 +76,30 @@ export function RadialConfigMenu({
           icon: <UploadCloud size={16} />,
           onClick: onPublish,
           dx: "-90",
-          dy: "20",
+          dy: "-10",
         }
       : null,
+
+    // ✅ NOVO BOTÃO: aditivo
+    onToggleAddendum
+      ? {
+          key: "addendum",
+          label: isAddendum ? "Deixar de ser aditivo" : "Transformar em aditivo",
+          icon: <Layers size={16} />,
+          onClick: onToggleAddendum,
+          dx: "-50",
+          dy: "70",
+        }
+      : null,
+
     onDelete
       ? {
           key: "delete",
           label: "Excluir",
           icon: <Trash2 size={16} />,
           onClick: onDelete,
-          dx: "-50",
-          dy: "60",
+          dx: "-90",
+          dy: "30",
         }
       : null,
   ].filter(Boolean) as Array<{

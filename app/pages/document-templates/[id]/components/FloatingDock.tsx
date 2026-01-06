@@ -11,16 +11,21 @@ export function FloatingDock({
   setAddOpen,
   onAdd,
 
-  // ✅ novo
+  // ✅ ficha cadastral
   hasRegistration,
   onToggleRegistration,
 
+  // ✅ config
   configOpen,
   setConfigOpen,
   onPreview,
   onSaveDraft,
   onPublish,
   onDelete,
+
+  // ✅ NOVO: aditivo
+  isAddendum,
+  onToggleAddendum,
 
   rightClassName = "right-6",
   bottomClassName = "bottom-10",
@@ -29,10 +34,11 @@ export function FloatingDock({
   setAddOpen: (v: boolean) => void;
   onAdd: (type: BlockType) => void;
 
-  // ✅ novo
+  // ✅ ficha cadastral
   hasRegistration: boolean;
   onToggleRegistration: () => void;
 
+  // ✅ config
   configOpen: boolean;
   setConfigOpen: (v: boolean) => void;
 
@@ -41,6 +47,10 @@ export function FloatingDock({
   onPublish?: () => void;
   onDelete?: () => void;
 
+  // ✅ NOVO: aditivo
+  isAddendum?: boolean;
+  onToggleAddendum?: () => void;
+
   rightClassName?: string;
   bottomClassName?: string;
 }) {
@@ -48,7 +58,8 @@ export function FloatingDock({
     typeof onPreview === "function" ||
     typeof onSaveDraft === "function" ||
     typeof onPublish === "function" ||
-    typeof onDelete === "function";
+    typeof onDelete === "function" ||
+    typeof onToggleAddendum === "function"; // ✅ inclui aditivo
 
   useEffect(() => {
     if (addOpen) setConfigOpen(false);
@@ -73,6 +84,9 @@ export function FloatingDock({
             onSaveDraft={onSaveDraft}
             onPublish={onPublish}
             onDelete={onDelete}
+            // ✅ NOVO: aditivo
+            isAddendum={isAddendum}
+            onToggleAddendum={onToggleAddendum}
           />
         )}
 
@@ -80,7 +94,7 @@ export function FloatingDock({
           open={addOpen}
           onToggle={() => setAddOpen(!addOpen)}
           onAdd={(type) => onAdd(type)}
-          // ✅ novo
+          // ✅ ficha cadastral
           hasRegistration={hasRegistration}
           onToggleRegistration={onToggleRegistration}
         />

@@ -22,7 +22,6 @@ import { VendorDetailsModalSelected } from "./components/VendorDetailsModalSelec
 import { useContractPreview } from "@/app/lib/contractPreview/ContractPreviewContext";
 import {
   fetchStatusesByVendorIds,
-  syncVendorsFromSheetIds,
   updateVendorStatus,
 } from "@/app/services/settings";
 import { VendorStatusModal } from "./components/VendorStatusModal";
@@ -81,29 +80,106 @@ export default function SelecionadosPage() {
     return STATUS_OPTIONS.map((s) => STATUS_LABEL[s]);
   }, []);
 
-  // ✅ carrega vendors + statuses
+
+  async function ensureVendorStatusRows(vendorIds: string[]) {
+    const ids = Array.from(new Set(vendorIds.filter(Boolean)));
+    if (!ids.length) return;
+
+    // 1) busca quais já existem
+    const { data: existing, error: exErr } = await supabase
+      .from("vendor_status")
+      .select("vendor_id")
+      .in("vendor_id", ids);
+
+    if (exErr) throw exErr;
+
+    const existingSet = new Set((existing ?? []).map((r: any) => String(r.vendor_id)));
+
+    // 2) descobre os faltantes
+    const missing = ids.filter((id) => !existingSet.has(id));
+
+    // 3) insere os faltantes com status "selecionado"
+    if (missing.length) {
+      const payload = missing.map((vendor_id) => ({
+        vendor_id,
+        status: "selecionado",
+        addendum_template_ids: [], // coluna nova
+      }));
+
+      // upsert por segurança (se tiver corrida)
+      const { error: insErr } = await supabase
+        .from("vendor_status")
+        .upsert(payload, { onConflict: "vendor_id" });
+
+      if (insErr) throw insErr;
+    }
+  }
+
+
+  // ✅ carrega vendors + status
   useEffect(() => {
+    let mounted = true;
+
     async function load() {
       try {
+        // 1) pega dados da planilha
         const data = await fetchVendorsSelected();
         const mapped = data.map(mapRegistrySheetToVendor);
 
         const sheetIds = mapped.map((v) => v.vendor_id).filter(Boolean);
 
+        // 2) garante que todos existem em vendor_status
+        await ensureVendorStatusRows(sheetIds);
+
+        // 3) carrega status + addendos do banco
         const statusRows = await fetchStatusesByVendorIds(sheetIds);
 
-        const map: Record<string, VendorStatus> = {};
-        for (const row of statusRows) map[row.vendor_id] = row.status;
+        const mapStatus: Record<
+          string,
+          { status: VendorStatus; addendum_template_ids: string[] }
+        > = {};
 
-        setStatusByKey(map);
-        setVendors(mapped);
+        for (const row of statusRows) {
+          mapStatus[row.vendor_id] = {
+            status: row.status,
+            addendum_template_ids: row.addendum_template_ids ?? [],
+          };
+        }
+
+        if (!mounted) return;
+
+        // 4) injeta status + addendum_template_ids dentro do mapped
+        const enriched = mapped.map((v) => {
+          const vs = mapStatus[v.vendor_id];
+
+          return {
+            ...v,
+            status: vs?.status ?? "selecionado",
+            addendum_template_ids: vs?.addendum_template_ids ?? [],
+          };
+        });
+
+        // 5) mantém também o statusByKey (usado em filtros, stats etc.)
+        const statusByKey: Record<string, VendorStatus> = {};
+        for (const v of enriched) {
+          if (v.vendor_id) statusByKey[v.vendor_id] = v.status;
+        }
+
+        setStatusByKey(statusByKey);
+        setVendors(enriched);
       } catch (e) {
         console.error(e);
       }
     }
 
     load();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+
 
   // ✅ NOVO: ao entrar na tela, busca o contrato selected
   useEffect(() => {
@@ -169,6 +245,7 @@ export default function SelecionadosPage() {
     const qDigits = q.replace(/\D/g, "");
 
     return vendors.filter((v) => {
+
       const name =
         v.pf_brand_name ||
         v.pj_brand_name ||
@@ -247,6 +324,7 @@ export default function SelecionadosPage() {
       aguardando_pagamento: 0,
       confirmado: 0,
       desistente: 0,
+      selecionado: 0
     };
 
     vendors.forEach((v) => {

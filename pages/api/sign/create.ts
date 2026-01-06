@@ -229,7 +229,6 @@ async function assinafyWaitDocumentReady(documentId: string, timeoutMs = 60000) 
 
     const payload = await res.json().catch(() => ({}));
 
-    // ✅ status REAL do documento (conforme seu console.log)
     const docStatus =
       payload?.data?.status ??
       payload?.status ?? // fallback (caso a API mude)

@@ -67,6 +67,7 @@ export function SelectContractModal({
           .from("document_templates")
           .select("id,title,status,has_registration")
           .in("status", ["selected", "published"])
+          .eq("is_addendum", false) 
           .order("created_at", { ascending: false });
 
         if (!mounted) return;

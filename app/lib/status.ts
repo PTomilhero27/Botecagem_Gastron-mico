@@ -3,6 +3,7 @@ export const STATUS_OPTIONS = [
   "aguardando_pagamento",
   "confirmado",
   "desistente",
+  "selecionado"
 ] as const;
 
 export type VendorStatus = (typeof STATUS_OPTIONS)[number];
@@ -12,6 +13,7 @@ export const STATUS_LABEL: Record<VendorStatus, string> = {
   aguardando_pagamento: "Aguardando pagamento",
   confirmado: "Confirmado",
   desistente: "Desistente",
+  selecionado: "Selecionados"
 };
 
 // ✅ inverso: "Aguardando assinatura" -> "aguardando_assinatura"

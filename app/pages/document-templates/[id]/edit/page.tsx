@@ -44,15 +44,20 @@ export default function EditTemplatePage() {
   const [configOpen, setConfigOpen] = useState(false);
 
   const [title, setTitle] = useState<string>("");
-  const [status, setStatus] = useState<"draft" | "published" | "deleted">("draft");
+  const [status, setStatus] = useState<"draft" | "published" | "deleted">(
+    "draft"
+  );
   const [blocks, setBlocks] = useState<ContractBlock[]>([]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // ✅ flag da ficha cadastral (coluna has_registration)
+  // ✅ flag da ficha cadastral
   const [hasRegistration, setHasRegistration] = useState(false);
+
+  // ✅ NOVO: flag aditivo
+  const [isAddendum, setIsAddendum] = useState(false);
 
   const [createClauseOpen, setCreateClauseOpen] = useState(false);
   const [createTextOpen, setCreateTextOpen] = useState(false);
@@ -61,7 +66,7 @@ export default function EditTemplatePage() {
     return blocks.filter((b) => b.type === "clause").length + 1;
   }, [blocks]);
 
-  // ✅ LOAD SEM LOOP + SEM TRAVAR EM "CARREGANDO..."
+  // ✅ LOAD
   useEffect(() => {
     if (!id) return;
 
@@ -74,7 +79,7 @@ export default function EditTemplatePage() {
 
         const { data: tpl, error: tplErr } = await supabase
           .from("document_templates")
-          .select("title,status,has_registration")
+          .select("title,status,has_registration,is_addendum")
           .eq("id", id)
           .single();
 
@@ -106,6 +111,7 @@ export default function EditTemplatePage() {
 
         setTitle(tpl.title || "");
         setHasRegistration(!!tpl.has_registration);
+        setIsAddendum(!!(tpl as any).is_addendum);
         setStatus((tpl.status as any) || "draft");
         setBlocks(safeParseBlocks(v?.content));
       } catch {
@@ -123,8 +129,6 @@ export default function EditTemplatePage() {
     return () => {
       mounted = false;
     };
-
-    // ⚠️ não coloca `toast` aqui pra não entrar em loop
   }, [id, router]);
 
   function onAdd(type: BlockType) {
@@ -247,12 +251,11 @@ export default function EditTemplatePage() {
     router.push("/pages/document-templates");
   }
 
-  // ✅ toggle true/false com toast
   async function toggleRegistration() {
     if (!id) return;
 
     const next = !hasRegistration;
-    setHasRegistration(next); // otimista
+    setHasRegistration(next);
 
     const { error } = await supabase
       .from("document_templates")
@@ -260,7 +263,7 @@ export default function EditTemplatePage() {
       .eq("id", id);
 
     if (error) {
-      setHasRegistration(!next); // rollback
+      setHasRegistration(!next);
       toast.toast({
         variant: "error",
         title: "Erro ao atualizar ficha cadastral",
@@ -270,6 +273,32 @@ export default function EditTemplatePage() {
 
     toast.toast({
       title: next ? "Ficha cadastral ativada" : "Ficha cadastral desativada",
+    });
+  }
+
+  // ✅ NOVO: toggle aditivo
+  async function toggleAddendum() {
+    if (!id) return;
+
+    const next = !isAddendum;
+    setIsAddendum(next); // otimista
+
+    const { error } = await supabase
+      .from("document_templates")
+      .update({ is_addendum: next })
+      .eq("id", id);
+
+    if (error) {
+      setIsAddendum(!next); // rollback
+      toast.toast({
+        variant: "error",
+        title: "Erro ao atualizar aditivo",
+      });
+      return;
+    }
+
+    toast.toast({
+      title: next ? "Agora é um aditivo" : "Agora não é mais aditivo",
     });
   }
 
@@ -322,8 +351,6 @@ export default function EditTemplatePage() {
             onClose={() => setPreviewOpen(false)}
             title={title}
             blocks={blocks}
-            // se você quiser mostrar no preview:
-            // hasRegistration={hasRegistration}
           />
 
           <FloatingDock
@@ -333,7 +360,6 @@ export default function EditTemplatePage() {
               setMenuOpen(false);
               onAdd(type);
             }}
-            // ✅ novos props (precisa atualizar FloatingDock/RadialAddMenu)
             hasRegistration={hasRegistration}
             onToggleRegistration={toggleRegistration}
             configOpen={configOpen}
@@ -342,6 +368,9 @@ export default function EditTemplatePage() {
             onSaveDraft={saveDraft}
             onPublish={publish}
             onDelete={softDelete}
+            // ✅ NOVO
+            isAddendum={isAddendum}
+            onToggleAddendum={toggleAddendum}
           />
         </>
       )}

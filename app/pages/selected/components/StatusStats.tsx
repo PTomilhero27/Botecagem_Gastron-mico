@@ -9,10 +9,15 @@ export function StatusStats({
   byStatus: Record<VendorStatus, number>;
 }) {
   return (
-    <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
       <StatCard
         label="Total"
         value={total}
+      />
+
+      <StatCard
+        label={STATUS_LABEL.selecionado}
+        value={byStatus.selecionado || 0}
       />
 
       <StatCard
