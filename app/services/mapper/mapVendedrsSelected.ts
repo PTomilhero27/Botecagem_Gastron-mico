@@ -126,7 +126,7 @@ export function mapRegistrySheetToVendor(
     // TERMOS / INTERNOS
     // =========================
     terms_accepted: (row.terms_accepted ?? "").trim(),
-    status: "selecionado",
+    status: "",
 
     assinafy_document_id: row.assinafy_document_id ?? "",
     signerId: row.signerId ?? ""

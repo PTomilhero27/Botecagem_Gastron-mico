@@ -15,7 +15,33 @@ type Template = {
   title: string;
   status: "draft" | "published";
   created_at: string;
+  is_addendum?: boolean | null; // ✅ NOVO
 };
+
+function Badge({
+  children,
+  variant = "default",
+}: {
+  children: React.ReactNode;
+  variant?: "default" | "addendum";
+}) {
+  const cls =
+    variant === "addendum"
+      ? "border-blue-200 bg-blue-50 text-blue-700"
+      : "border-zinc-200 bg-zinc-50 text-zinc-700";
+
+  return (
+    <span
+      className={[
+        "inline-flex items-center rounded-full border px-2.5 py-1",
+        "text-[11px] font-extrabold uppercase tracking-wide",
+        cls,
+      ].join(" ")}
+    >
+      {children}
+    </span>
+  );
+}
 
 export default function DocumentTemplatesPage() {
   const [items, setItems] = useState<Template[]>([]);
@@ -23,13 +49,14 @@ export default function DocumentTemplatesPage() {
 
   async function load() {
     setLoading(true);
+
     const { data } = await supabase
       .from("document_templates")
-      .select("id,title,status,created_at")
+      .select("id,title,status,created_at,is_addendum") // ✅ NOVO
       .neq("status", "deleted")
       .order("created_at", { ascending: false });
 
-    setItems(data || []);
+    setItems((data as any) || []);
     setLoading(false);
   }
 
@@ -48,8 +75,8 @@ export default function DocumentTemplatesPage() {
 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-bold">Contratos</h1>
-        {items.length > 0 && (
 
+        {items.length > 0 && (
           <Link
             href="/pages/document-templates/new"
             className="rounded-lg bg-orange-500 px-4 py-2 text-white"
@@ -57,10 +84,7 @@ export default function DocumentTemplatesPage() {
             Novo contrato
           </Link>
         )}
-
       </div>
-
-
 
       {loading && <p>Carregando...</p>}
 
@@ -68,7 +92,8 @@ export default function DocumentTemplatesPage() {
         <div className="mt-10 flex flex-col items-center justify-center rounded-xl border border-dashed p-10 text-center">
           <p className="text-lg font-medium">Nenhum contrato criado</p>
           <p className="mt-1 text-sm text-zinc-500">
-            Crie um contrato para começar a formalizar a participação dos expositores.
+            Crie um contrato para começar a formalizar a participação dos
+            expositores.
           </p>
 
           <Link
@@ -80,7 +105,6 @@ export default function DocumentTemplatesPage() {
         </div>
       )}
 
-
       {!loading && (
         <div className="space-y-3">
           {items.map((t) => (
@@ -88,10 +112,18 @@ export default function DocumentTemplatesPage() {
               key={t.id}
               className="flex items-center justify-between rounded-xl border p-4"
             >
-              <div>
-                <div className="font-semibold">{t.title}</div>
-                <div className="text-sm text-zinc-500">
-                  {t.status === "draft" ? "Rascunho" : "Publicado"}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="font-semibold truncate">{t.title}</div>
+
+                  {/* ✅ Badge de aditivo */}
+                  {t.is_addendum ? (
+                    <Badge variant="addendum">Aditivo</Badge>
+                  ) : null}
+                </div>
+
+                <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
+                  <span>{t.status === "draft" ? "Rascunho" : "Publicado"}</span>
                 </div>
               </div>
 

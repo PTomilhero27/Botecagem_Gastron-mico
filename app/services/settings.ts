@@ -78,7 +78,7 @@ export async function syncVendorsFromSheetIds(sheetVendorIds: string[]) {
   };
 }
 
-export type VendorStatusRow = { vendor_id: string; status: VendorStatus };
+export type VendorStatusRow = { vendor_id: string; status: VendorStatus, addendum_template_ids: string[] };
 
 function chunk<T>(arr: T[], size = 800) {
   const out: T[][] = [];
@@ -96,7 +96,7 @@ export async function fetchStatusesByVendorIds(vendorIds: string[]) {
   for (const part of chunk(ids, 800)) {
     const { data, error } = await supabase
       .from("vendor_status")
-      .select("vendor_id,status")
+      .select("vendor_id,status,addendum_template_ids")
       .in("vendor_id", part);
 
     if (error) throw error;

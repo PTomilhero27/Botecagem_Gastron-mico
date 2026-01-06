@@ -11,6 +11,23 @@
   color: #111;
 }
 
+/* base não deve forçar nova página */
+.pdf-section {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* quebra página apenas nos aditivos (seções depois da base) */
+.pdf-addendum {
+  break-before: page;
+  page-break-before: always;
+}
+
+/* evita o header do aditivo ficar sozinho */
+.pdf-addendum-header {
+  break-after: avoid;
+  page-break-after: avoid;
+}
 
 
 /* ===== PDF helpers ===== */
