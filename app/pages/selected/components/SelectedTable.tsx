@@ -9,6 +9,7 @@ import { SignatureLinkModal } from "./SignatureLinkModal";
 import { PageSize, TableFooter } from "../../dashboard/components/table/TableFooter";
 import { ensureContract, updateContractSigning } from "@/app/services/settings";
 import { createSignatureLink } from "@/app/services";
+import { RegistrationModal } from "./RegistrationModal";
 
 function formatCpfCnpj(v: string) {
   const s = (v ?? "").replace(/\D/g, "");
@@ -75,6 +76,12 @@ export function SelectedTable({
   const [signError, setSignError] = useState<string | null>(null);
   const [signTitle, setSignTitle] = useState("Link de assinatura");
 
+  const [regOpen, setRegOpen] = useState(false);
+  const [regLoading, setRegLoading] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
+  const [regData, setRegData] = useState<any | null>(null);
+
+
   // quando mudar filtros (rows), volta pra página 1
   useEffect(() => {
     setPage(1);
@@ -129,7 +136,7 @@ export function SelectedTable({
         name,
         email,
         brend,
-  
+
       });
 
       setSignUrl(signUrl);
@@ -139,6 +146,62 @@ export function SelectedTable({
       setSignLoading(false);
     }
   }
+
+  function YesNoDot({
+    ok,
+    onClick,
+  }: {
+    ok: boolean;
+    onClick?: () => void;
+  }) {
+    const clickable = ok && !!onClick;
+
+    return (
+      <button
+        type="button"
+        onClick={clickable ? onClick : undefined}
+        disabled={!clickable}
+        className={[
+          "inline-flex items-center justify-center rounded-full p-2",
+          clickable ? "hover:bg-zinc-100" : "cursor-default opacity-70",
+        ].join(" ")}
+        title={clickable ? "Ver cadastro" : "Sem cadastro"}
+      >
+        <span
+          className={[
+            "h-2.5 w-2.5 rounded-full",
+            ok ? "bg-emerald-500" : "bg-red-500",
+          ].join(" ")}
+        />
+      </button>
+    );
+  }
+
+
+  async function openRegistration(vendorId: string) {
+    if (!vendorId) return;
+
+    setRegOpen(true);
+    setRegLoading(true);
+    setRegError(null);
+    setRegData(null);
+
+    try {
+      const res = await fetch(`/api/vendors/${encodeURIComponent(vendorId)}/registration`);
+      const json = await res.json();
+
+      if (!res.ok) throw new Error(json?.error || "Erro ao carregar cadastro");
+      setRegData(json);
+    } catch (e: any) {
+      setRegError(e?.message || "Erro desconhecido");
+    } finally {
+      setRegLoading(false);
+    }
+  }
+
+
+
+
   return (
     <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       <div className="overflow-auto">
@@ -151,6 +214,9 @@ export function SelectedTable({
               <th className="px-4 py-3">CPF/CNPJ</th>
               <th className="px-4 py-3">Contato</th>
               <th className="px-4 py-3">Cidade/UF</th>
+
+              <th className="px-4 py-3 text-center">Menu/Equip.</th>
+
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Ações</th>
             </tr>
@@ -159,12 +225,16 @@ export function SelectedTable({
           <tbody>
             {pageRows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-zinc-500">
+                <td colSpan={10} className="px-4 py-10 text-zinc-500">
                   Nenhum selecionado.
                 </td>
               </tr>
             ) : (
               pageRows.map((r, idx) => {
+                console.log(r)
+
+                const hasMenu = Boolean((r as any).merchant_id);
+
                 const rowKey = getRowKey(r as any, idx);
 
                 // ✅ tenta status por key nova; se não achar, cai no vendor_id
@@ -215,6 +285,14 @@ export function SelectedTable({
                         ((r as any).address_state ? `/${(r as any).address_state}` : "")}
                     </td>
 
+                    <td className="px-4 py-3 text-center">
+                      <YesNoDot
+                        ok={hasMenu}
+                        onClick={() => openRegistration(String((r as any).vendor_id))}
+                      />
+                    </td>
+
+
                     <td className="px-4 py-3 w-8 text-center">
                       <StatusPill value={status} />
                     </td>
@@ -235,6 +313,7 @@ export function SelectedTable({
         </table>
       </div>
 
+
       <TableFooter
         total={total}
         showing={showing}
@@ -254,6 +333,15 @@ export function SelectedTable({
         link={signUrl}
         error={signError}
       />
+      <RegistrationModal
+        open={regOpen}
+        onClose={() => setRegOpen(false)}
+        loading={regLoading}
+        error={regError}
+        data={regData}
+      />
+
     </div>
+
   );
 }

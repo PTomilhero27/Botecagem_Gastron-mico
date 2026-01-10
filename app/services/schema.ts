@@ -48,11 +48,7 @@ export const VendorSelectedSchema = z.object({
   // 4️⃣ CONTATO
   // =========================
   contact_phone: z.string(),
-  contact_email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .email("Email inválido"),
+  contact_email: z.string().trim().toLowerCase().email("Email inválido"),
 
   // =========================
   // 5️⃣ ENDEREÇO
@@ -81,6 +77,13 @@ export const VendorSelectedSchema = z.object({
   status: z.enum(["selecionado", "ativo", "inativo", "cancelado"]).default("selecionado"),
   source_form: z.enum(["google_forms", "admin", "api"]).default("google_forms"),
   form_submitted_at: z.string().optional(),
+
+  // =========================
+  // 8️⃣ REFERÊNCIAS DO CADASTRO (SUPABASE)
+  // =========================
+  merchant_id: z.string().uuid().nullable().optional(),
+  equipment_profile_id: z.string().uuid().nullable().optional(),
 });
+
 
 export const VendorSelectedListSchema = z.array(VendorSelectedSchema);

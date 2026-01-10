@@ -28,7 +28,7 @@ export type VendorSelected = {
   // =========================
   // TIPO
   // =========================
-  person_type: "pf" | "pj" ;
+  person_type: "pf" | "pj";
 
   // =========================
   // PF
@@ -76,4 +76,11 @@ export type VendorSelected = {
   // TERMOS
   // =========================
   terms_accepted: string; // vem como texto do forms (pode virar boolean depois)
+
+
+  // =========================
+  // REFERÊNCIAS DO CADASTRO (SUPABASE)
+  // =========================
+  merchant_id?: string | null;            // se existe -> menu ok
+  equipment_profile_id?: string | null;   // se existe -> equipamentos ok
 };

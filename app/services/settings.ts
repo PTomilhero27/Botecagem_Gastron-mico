@@ -78,7 +78,7 @@ export async function syncVendorsFromSheetIds(sheetVendorIds: string[]) {
   };
 }
 
-export type VendorStatusRow = { vendor_id: string; status: VendorStatus, addendum_template_ids: string[] };
+export type VendorStatusRow = { vendor_id: string; status: VendorStatus, addendum_template_ids: string[], merchant_id: string, equipment_profile_id: string };
 
 function chunk<T>(arr: T[], size = 800) {
   const out: T[][] = [];
@@ -86,8 +86,12 @@ function chunk<T>(arr: T[], size = 800) {
   return out;
 }
 
+
+//pegando as informações do vendor_status
 export async function fetchStatusesByVendorIds(vendorIds: string[]) {
-  const ids = Array.from(new Set(vendorIds.map(v => (v ?? "").trim()).filter(Boolean)));
+  const ids = Array.from(
+    new Set(vendorIds.map(v => (v ?? "").trim()).filter(Boolean))
+  );
   if (ids.length === 0) return [];
 
   const all: VendorStatusRow[] = [];
@@ -96,15 +100,23 @@ export async function fetchStatusesByVendorIds(vendorIds: string[]) {
   for (const part of chunk(ids, 800)) {
     const { data, error } = await supabase
       .from("vendor_status")
-      .select("vendor_id,status,addendum_template_ids")
+      .select(`
+        vendor_id,
+        status,
+        addendum_template_ids,
+        merchant_id,
+        equipment_profile_id
+      `)
       .in("vendor_id", part);
 
     if (error) throw error;
+
     all.push(...((data ?? []) as VendorStatusRow[]));
   }
 
   return all;
 }
+
 
 export async function updateVendorStatus(vendorId: string, status: VendorStatus) {
   const { data, error } = await supabase
