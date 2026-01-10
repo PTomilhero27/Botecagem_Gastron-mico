@@ -1,3 +1,5 @@
+"use client";
+
 export type FilterItem = {
   key: string; // ex: "status"
   label: string; // ex: "Status"
@@ -6,6 +8,23 @@ export type FilterItem = {
 };
 
 export type FiltersState = Record<string, string>;
+
+function gridColsClass(columns: 2 | 3 | 4 | 5 | 6) {
+  // Tailwind não compila string dinâmica tipo `lg:grid-cols-${columns}`
+  switch (columns) {
+    case 2:
+      return "lg:grid-cols-2";
+    case 3:
+      return "lg:grid-cols-3";
+    case 4:
+      return "lg:grid-cols-4";
+    case 5:
+      return "lg:grid-cols-5";
+    case 6:
+    default:
+      return "lg:grid-cols-6";
+  }
+}
 
 export function Filters({
   filters,
@@ -20,7 +39,7 @@ export function Filters({
 }) {
   return (
     <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className={`grid gap-3 lg:grid-cols-${columns}`}>
+      <div className={`grid gap-3 ${gridColsClass(columns)}`}>
         {items.map((item) => (
           <div key={item.key}>
             <label className="text-xs font-medium text-zinc-600">

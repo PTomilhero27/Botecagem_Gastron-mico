@@ -20,10 +20,7 @@ import { VendorSelected } from "@/lib/types";
 import { VendorDetailsModalSelected } from "./components/VendorDetailsModalSelected";
 
 import { useContractPreview } from "@/app/lib/contractPreview/ContractPreviewContext";
-import {
-  fetchStatusesByVendorIds,
-  updateVendorStatus,
-} from "@/app/services/settings";
+import { fetchStatusesByVendorIds, updateVendorStatus } from "@/app/services/settings";
 import { VendorStatusModal } from "./components/VendorStatusModal";
 import { Filters, FiltersState } from "./components/Filters";
 import { SearchOverlaySelected } from "./components/SearchOverlaySelected";
@@ -44,6 +41,8 @@ type SelectedTemplate = {
   has_registration?: boolean | null;
 };
 
+const YESNO_OPTIONS = ["Com cadastro", "Sem cadastro"] as const;
+
 export default function SelecionadosPage() {
   useAuthGuard({
     redirectTo: "/pages/login",
@@ -58,34 +57,29 @@ export default function SelecionadosPage() {
   const [selected, setSelected] = useState<VendorSelected | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const [statusByKey, setStatusByKey] = useState<
-    Record<string, VendorStatus | undefined>
-  >({});
+  const [statusByKey, setStatusByKey] = useState<Record<string, VendorStatus | undefined>>({});
   const [statusOpen, setStatusOpen] = useState(false);
 
+  // ✅ NOVO: filtros menu/equip também
   const [filters, setFilters] = useState<FiltersState>({
     status: "",
+    menu: "",
   });
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  // ✅ contrato global
   const [contractOpen, setContractOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] =
-    useState<SelectedTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<SelectedTemplate | null>(null);
 
-  // ✅ opções do select em "label bonito"
   const statusOptionsLabels = useMemo(() => {
     return STATUS_OPTIONS.map((s) => STATUS_LABEL[s]);
   }, []);
-
 
   async function ensureVendorStatusRows(vendorIds: string[]) {
     const ids = Array.from(new Set(vendorIds.filter(Boolean)));
     if (!ids.length) return;
 
-    // 1) busca quais já existem
     const { data: existing, error: exErr } = await supabase
       .from("vendor_status")
       .select("vendor_id")
@@ -94,104 +88,91 @@ export default function SelecionadosPage() {
     if (exErr) throw exErr;
 
     const existingSet = new Set((existing ?? []).map((r: any) => String(r.vendor_id)));
-
-    // 2) descobre os faltantes
     const missing = ids.filter((id) => !existingSet.has(id));
 
-    // 3) insere os faltantes com status "selecionado"
     if (missing.length) {
       const payload = missing.map((vendor_id) => ({
         vendor_id,
         status: "selecionado",
-        addendum_template_ids: [], // coluna nova
+        addendum_template_ids: [],
       }));
 
-      // upsert por segurança (se tiver corrida)
-      const { error: insErr } = await supabase
-        .from("vendor_status")
-        .upsert(payload, { onConflict: "vendor_id" });
+      const { error: insErr } = await supabase.from("vendor_status").upsert(payload, {
+        onConflict: "vendor_id",
+      });
 
       if (insErr) throw insErr;
     }
   }
 
-
   // ✅ carrega vendors + status
-useEffect(() => {
-  let mounted = true;
+  useEffect(() => {
+    let mounted = true;
 
-  async function load() {
-    try {
-      // 1) pega dados da planilha
-      const data = await fetchVendorsSelected();
-      const mapped = data.map(mapRegistrySheetToVendor);
+    async function load() {
+      try {
+        const data = await fetchVendorsSelected();
+        const mapped = data.map(mapRegistrySheetToVendor);
 
-      const sheetIds = mapped.map((v) => v.vendor_id).filter(Boolean);
+        const sheetIds = mapped.map((v) => v.vendor_id).filter(Boolean);
 
-      // 2) garante que todos existem em vendor_status
-      await ensureVendorStatusRows(sheetIds);
+        await ensureVendorStatusRows(sheetIds);
 
-      // 3) carrega status + addendos + refs do banco
-      const statusRows = await fetchStatusesByVendorIds(sheetIds);
+        const statusRows = await fetchStatusesByVendorIds(sheetIds);
 
-      const mapStatus: Record<
-        string,
-        {
-          status: VendorStatus;
-          addendum_template_ids: string[];
-          merchant_id: string | null;
-          equipment_profile_id: string | null;
+        const mapStatus: Record<
+          string,
+          {
+            status: VendorStatus;
+            addendum_template_ids: string[];
+            merchant_id: string | null;
+            equipment_profile_id: string | null;
+          }
+        > = {};
+
+        for (const row of statusRows) {
+          mapStatus[row.vendor_id] = {
+            status: row.status as VendorStatus,
+            addendum_template_ids: row.addendum_template_ids ?? [],
+            merchant_id: row.merchant_id ?? null,
+            equipment_profile_id: row.equipment_profile_id ?? null,
+          };
         }
-      > = {};
 
-      for (const row of statusRows) {
-        mapStatus[row.vendor_id] = {
-          status: row.status as VendorStatus,
-          addendum_template_ids: row.addendum_template_ids ?? [],
-          merchant_id: row.merchant_id ?? null,
-          equipment_profile_id: row.equipment_profile_id ?? null,
-        };
+        if (!mounted) return;
+
+        const enriched = mapped.map((v) => {
+          const vs = mapStatus[v.vendor_id];
+
+          return {
+            ...v,
+            status: vs?.status ?? "selecionado",
+            addendum_template_ids: vs?.addendum_template_ids ?? [],
+            merchant_id: vs?.merchant_id ?? null,
+            equipment_profile_id: vs?.equipment_profile_id ?? null,
+          };
+        });
+
+        const nextStatusByKey: Record<string, VendorStatus> = {};
+        for (const v of enriched) {
+          if (v.vendor_id) nextStatusByKey[v.vendor_id] = v.status as VendorStatus;
+        }
+
+        setStatusByKey(nextStatusByKey);
+        setVendors(enriched);
+      } catch (e) {
+        console.error(e);
       }
-
-      if (!mounted) return;
-
-      // 4) injeta status + addendum_template_ids + refs dentro do mapped
-      const enriched = mapped.map((v) => {
-        const vs = mapStatus[v.vendor_id];
-
-        return {
-          ...v,
-          status: vs?.status ?? "selecionado",
-          addendum_template_ids: vs?.addendum_template_ids ?? [],
-          merchant_id: vs?.merchant_id ?? null,
-          equipment_profile_id: vs?.equipment_profile_id ?? null,
-        };
-      });
-
-      // 5) mantém também o statusByKey (usado em filtros, stats etc.)
-      const statusByKey: Record<string, VendorStatus> = {};
-      for (const v of enriched) {
-        if (v.vendor_id) statusByKey[v.vendor_id] = v.status as VendorStatus;
-      }
-
-      setStatusByKey(statusByKey);
-      setVendors(enriched);
-    } catch (e) {
-      console.error(e);
     }
-  }
 
-  load();
+    load();
 
-  return () => {
-    mounted = false;
-  };
-}, []);
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-
-
-
-  // ✅ NOVO: ao entrar na tela, busca o contrato selected
+  // ✅ contrato selected
   useEffect(() => {
     let mounted = true;
 
@@ -207,8 +188,6 @@ useEffect(() => {
 
       if (error) {
         console.error(error);
-        // opcional: toast só se quiser
-        // toast.toast({ variant: "error", title: "Erro ao carregar contrato selecionado" });
         return;
       }
 
@@ -255,7 +234,6 @@ useEffect(() => {
     const qDigits = q.replace(/\D/g, "");
 
     return vendors.filter((v) => {
-
       const name =
         v.pf_brand_name ||
         v.pj_brand_name ||
@@ -308,25 +286,48 @@ useEffect(() => {
     setStatusByKey((prev) => ({ ...prev, [vendorId]: status }));
   }
 
+  // ✅ APLICA: status + menu + equip
   const filteredVendors = useMemo(() => {
+    // 1) status
     const selectedLabel = (filters.status || "").trim();
+
+    let base = filteredBySearch;
+
     if (!selectedLabel) {
-      return filteredBySearch.filter((v) => {
+      base = base.filter((v) => {
         const id = v.vendor_id;
         if (!id) return false;
         return statusByKey[id] !== "desistente";
       });
+    } else {
+      const wantedStatus = STATUS_VALUE_BY_LABEL[selectedLabel];
+      if (wantedStatus) {
+        base = base.filter((v) => {
+          const id = v.vendor_id;
+          if (!id) return false;
+          return statusByKey[id] === wantedStatus;
+        });
+      }
     }
 
-    const wantedStatus = STATUS_VALUE_BY_LABEL[selectedLabel];
-    if (!wantedStatus) return filteredBySearch;
+    // 2) menu
+    const menuFilter = (filters.menu || "").trim();
+    if (menuFilter === "Com cadastro") {
+      base = base.filter((v) => Boolean((v as any).merchant_id));
+    } else if (menuFilter === "Sem cadastro") {
+      base = base.filter((v) => !Boolean((v as any).merchant_id));
+    }
 
-    return filteredBySearch.filter((v) => {
-      const id = v.vendor_id;
-      if (!id) return false;
-      return statusByKey[id] === wantedStatus;
-    });
-  }, [filteredBySearch, statusByKey, filters.status]);
+    // 3) equip
+    const equipFilter = (filters.equip || "").trim();
+    if (equipFilter === "Com cadastro") {
+      base = base.filter((v) => Boolean((v as any).equipment_profile_id));
+    } else if (equipFilter === "Sem cadastro") {
+      base = base.filter((v) => !Boolean((v as any).equipment_profile_id));
+    }
+
+    return base;
+  }, [filteredBySearch, statusByKey, filters.status, filters.menu, filters.equip]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<VendorStatus, number> = {
@@ -334,7 +335,7 @@ useEffect(() => {
       aguardando_pagamento: 0,
       confirmado: 0,
       desistente: 0,
-      selecionado: 0
+      selecionado: 0,
     };
 
     vendors.forEach((v) => {
@@ -380,7 +381,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* ✅ só o botão de selecionar */}
         <div className="flex flex-col items-end gap-2">
           <button
             onClick={() => setContractOpen(true)}
@@ -403,6 +403,13 @@ useEffect(() => {
             options: statusOptionsLabels,
             placeholder: "Todos",
           },
+          {
+            key: "menu",
+            label: "Menu",
+            options: Array.from(YESNO_OPTIONS),
+            placeholder: "Todos",
+          }
+
         ]}
         columns={6}
       />
