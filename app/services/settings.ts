@@ -78,7 +78,7 @@ export async function syncVendorsFromSheetIds(sheetVendorIds: string[]) {
   };
 }
 
-export type VendorStatusRow = { vendor_id: string; status: VendorStatus, addendum_template_ids: string[], merchant_id: string, equipment_profile_id: string };
+export type VendorStatusRow = { vendor_id: string; status: VendorStatus, addendum_template_ids: string[], merchant_id: string, equipment_profile_id: string, banner_profile_id: string };
 
 function chunk<T>(arr: T[], size = 800) {
   const out: T[][] = [];
@@ -105,7 +105,8 @@ export async function fetchStatusesByVendorIds(vendorIds: string[]) {
         status,
         addendum_template_ids,
         merchant_id,
-        equipment_profile_id
+        equipment_profile_id,
+        banner_profile_id
       `)
       .in("vendor_id", part);
 

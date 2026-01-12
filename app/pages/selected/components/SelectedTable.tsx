@@ -216,6 +216,8 @@ export function SelectedTable({
               <th className="px-4 py-3">Cidade/UF</th>
 
               <th className="px-4 py-3 text-center">Menu/Equip.</th>
+              <th className="px-4 py-3 text-center">Banner</th>
+
 
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Ações</th>
@@ -234,6 +236,7 @@ export function SelectedTable({
                 console.log(r)
 
                 const hasMenu = Boolean((r as any).merchant_id);
+                const hasBanner = Boolean((r as any).banner_profile_id);
 
                 const rowKey = getRowKey(r as any, idx);
 
@@ -290,6 +293,10 @@ export function SelectedTable({
                         ok={hasMenu}
                         onClick={() => openRegistration(String((r as any).vendor_id))}
                       />
+                    </td>
+
+                    <td className="px-4 py-3 text-center">
+                      <YesNoDot ok={hasBanner} />
                     </td>
 
 

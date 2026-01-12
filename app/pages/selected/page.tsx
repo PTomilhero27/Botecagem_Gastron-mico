@@ -64,6 +64,7 @@ export default function SelecionadosPage() {
   const [filters, setFilters] = useState<FiltersState>({
     status: "",
     menu: "",
+    banner: "",
   });
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -127,6 +128,7 @@ export default function SelecionadosPage() {
             addendum_template_ids: string[];
             merchant_id: string | null;
             equipment_profile_id: string | null;
+            banner_profile_id: string | null;
           }
         > = {};
 
@@ -136,8 +138,10 @@ export default function SelecionadosPage() {
             addendum_template_ids: row.addendum_template_ids ?? [],
             merchant_id: row.merchant_id ?? null,
             equipment_profile_id: row.equipment_profile_id ?? null,
+            banner_profile_id: row.banner_profile_id ?? null,
           };
         }
+
 
         if (!mounted) return;
 
@@ -150,6 +154,7 @@ export default function SelecionadosPage() {
             addendum_template_ids: vs?.addendum_template_ids ?? [],
             merchant_id: vs?.merchant_id ?? null,
             equipment_profile_id: vs?.equipment_profile_id ?? null,
+            banner_profile_id: vs?.banner_profile_id ?? null,
           };
         });
 
@@ -318,16 +323,22 @@ export default function SelecionadosPage() {
       base = base.filter((v) => !Boolean((v as any).merchant_id));
     }
 
-    // 3) equip
-    const equipFilter = (filters.equip || "").trim();
-    if (equipFilter === "Com cadastro") {
-      base = base.filter((v) => Boolean((v as any).equipment_profile_id));
-    } else if (equipFilter === "Sem cadastro") {
-      base = base.filter((v) => !Boolean((v as any).equipment_profile_id));
+
+    // 4) banner
+    const bannerFilter = (filters.banner || "").trim();
+    if (bannerFilter === "Com cadastro") {
+      base = base.filter((v) => Boolean((v as any).banner_profile_id));
+    } else if (bannerFilter === "Sem cadastro") {
+      base = base.filter((v) => !Boolean((v as any).banner_profile_id));
     }
 
+
     return base;
-  }, [filteredBySearch, statusByKey, filters.status, filters.menu, filters.equip]);
+  }, [filteredBySearch,
+    statusByKey,
+    filters.status,
+    filters.menu,
+    filters.banner,]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<VendorStatus, number> = {
@@ -381,7 +392,14 @@ export default function SelecionadosPage() {
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push("/pages/selected/barracas")}
+            className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-extrabold text-white shadow hover:bg-zinc-800"
+          >
+            Banners
+          </button>
+
           <button
             onClick={() => setContractOpen(true)}
             className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-extrabold text-white shadow hover:bg-orange-600"
@@ -389,9 +407,15 @@ export default function SelecionadosPage() {
             Selecionar contrato
           </button>
         </div>
+
+
       </div>
 
-      <StatusStats total={vendors.length} byStatus={statusCounts} />
+      <StatusStats
+        total={vendors.length}
+        byStatus={statusCounts}
+        confirmedVendors={vendors.filter((v) => (v as any).status === "confirmado")}
+      />
 
       <Filters
         filters={filters}
@@ -408,11 +432,17 @@ export default function SelecionadosPage() {
             label: "Menu",
             options: Array.from(YESNO_OPTIONS),
             placeholder: "Todos",
-          }
-
+          },
+          {
+            key: "banner",
+            label: "Banner",
+            options: Array.from(YESNO_OPTIONS),
+            placeholder: "Todos",
+          },
         ]}
         columns={6}
       />
+
 
       <SelectedTable
         rows={filteredVendors}
